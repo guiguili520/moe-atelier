@@ -91,6 +91,7 @@ const ImageTask: React.FC<ImageTaskProps> = ({ id, storageKey, config, onRemove,
   const abortControllersRef = useRef<Map<string, AbortController>>(new Map());
   const isRetryingRef = useRef<Map<string, boolean>>(new Map());
   const taskStartTimesRef = useRef<Map<string, number>>(new Map());
+  const retryTimersRef = useRef<Map<string, number>>(new Map());
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const dbPromiseRef = useRef<Promise<IDBDatabase> | null>(null);
   const objectUrlMapRef = useRef<Map<string, string>>(new Map());
@@ -176,6 +177,8 @@ const ImageTask: React.FC<ImageTaskProps> = ({ id, storageKey, config, onRemove,
     audioRef.current = new Audio(SUCCESS_AUDIO_SRC);
     return () => {
       abortControllersRef.current.forEach((controller: AbortController) => controller.abort());
+      retryTimersRef.current.forEach((timerId: number) => clearTimeout(timerId));
+      retryTimersRef.current.clear();
       objectUrlMapRef.current.forEach((url: string) => URL.revokeObjectURL(url));
       objectUrlMapRef.current.clear();
       taskStartTimesRef.current.clear();
@@ -321,6 +324,14 @@ const ImageTask: React.FC<ImageTaskProps> = ({ id, storageKey, config, onRemove,
     }
   };
 
+  const clearRetryTimer = (subTaskId: string) => {
+    const timerId = retryTimersRef.current.get(subTaskId);
+    if (timerId !== undefined) {
+      clearTimeout(timerId);
+      retryTimersRef.current.delete(subTaskId);
+    }
+  };
+
   const persistImageLocally = async (sourceUrl: string, key: string) => {
     try {
       const isHttp = /^https?:\/\//i.test(sourceUrl);
@@ -443,12 +454,11 @@ const ImageTask: React.FC<ImageTaskProps> = ({ id, storageKey, config, onRemove,
     }));
 
     results.forEach(task => {
+      clearObjectUrl(task.id);
+      clearRetryTimer(task.id);
       if (!tasksToReuseIds.has(task.id)) {
-        clearObjectUrl(task.id);
         isRetryingRef.current.delete(task.id);
         taskStartTimesRef.current.delete(task.id);
-      } else {
-        clearObjectUrl(task.id);
       }
     });
 
@@ -469,9 +479,26 @@ const ImageTask: React.FC<ImageTaskProps> = ({ id, storageKey, config, onRemove,
   };
 
   const handleRetrySingle = (subTaskId: string) => {
+    clearRetryTimer(subTaskId);
     updateResult(subTaskId, { status: 'loading', error: undefined, displayUrl: undefined, localKey: undefined, sourceUrl: undefined, savedLocal: false, startTime: Date.now() });
     taskStartTimesRef.current.set(subTaskId, Date.now());
     isRetryingRef.current.set(subTaskId, true);
+    performRequest(subTaskId);
+  };
+
+  const handleResumeSingle = (subTaskId: string) => {
+    isRetryingRef.current.set(subTaskId, true);
+    const hasActiveRequest = abortControllersRef.current.has(subTaskId);
+    const hasPendingRetry = retryTimersRef.current.has(subTaskId);
+    const existingStartTime = taskStartTimesRef.current.get(subTaskId);
+    const nextStartTime = existingStartTime ?? Date.now();
+    if (!existingStartTime) {
+      taskStartTimesRef.current.set(subTaskId, nextStartTime);
+    }
+    updateResult(subTaskId, { status: 'loading', error: undefined, startTime: nextStartTime });
+    if (hasActiveRequest || hasPendingRetry) {
+      return;
+    }
     performRequest(subTaskId);
   };
 
@@ -485,6 +512,9 @@ const ImageTask: React.FC<ImageTaskProps> = ({ id, storageKey, config, onRemove,
   };
 
   const performRequest = async (subTaskId: string) => {
+    if (abortControllersRef.current.has(subTaskId)) {
+      return;
+    }
     const controller = new AbortController();
     abortControllersRef.current.set(subTaskId, controller);
     updateStats('request');
@@ -600,14 +630,17 @@ const ImageTask: React.FC<ImageTaskProps> = ({ id, storageKey, config, onRemove,
             retryCount: (r.retryCount || 0) + 1
           };
         }));
-        
-        setTimeout(() => {
-            if (isRetryingRef.current.get(subTaskId)) { 
-                 performRequest(subTaskId);
-            } else {
-                updateResult(subTaskId, { status: 'error', error: '已停止重试' });
-            }
+
+        clearRetryTimer(subTaskId);
+        const timerId = window.setTimeout(() => {
+          clearRetryTimer(subTaskId);
+          if (isRetryingRef.current.get(subTaskId)) { 
+            performRequest(subTaskId);
+          } else {
+            updateResult(subTaskId, { status: 'error', error: '已停止重试' });
+          }
         }, 1000);
+        retryTimersRef.current.set(subTaskId, timerId);
       } else {
         updateResult(subTaskId, { status: 'error', error: errorMessage });
       }
@@ -1033,7 +1066,7 @@ const ImageTask: React.FC<ImageTaskProps> = ({ id, storageKey, config, onRemove,
                                 <Button 
                                   size="small" 
                                   icon={<PlayCircleFilled />} 
-                                  onClick={() => handleRetrySingle(result.id)}
+                                  onClick={() => handleResumeSingle(result.id)}
                                   style={{ fontSize: 10, height: 24, padding: '0 8px' }}
                                 >继续</Button>
                               ) : (
