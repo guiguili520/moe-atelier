@@ -271,9 +271,7 @@ const PromptDrawer: React.FC<PromptDrawerProps> = ({ visible, onClose, onCreateT
       return {
         content: variant?.content || '',
         contributor: variant?.contributor,
-        // 变体目前没有独立图片数组，通常复用主图片或追加在主图片数组中
-        // 根据 nanobanana 逻辑，所有图片都在 prompt.images 中
-        images: previewPrompt.images || [] 
+        images: variant?.images?.length ? variant.images : (previewPrompt.images || [])
       };
     }
   }, [previewPrompt, activeVariantIndex]);
@@ -722,11 +720,29 @@ const PromptDrawer: React.FC<PromptDrawerProps> = ({ visible, onClose, onCreateT
                         ))}
                       </div>
                       
-                      <div style={{ display: 'flex', alignItems: 'center', marginTop: 'auto', paddingTop: 6 }}>
-                        <Avatar size={20} icon={<UserOutlined />} style={{ backgroundColor: COLORS.secondary }} />
-                        <Text type="secondary" style={{ fontSize: 12, marginLeft: 6, color: COLORS.textLight }} ellipsis>
-                          {prompt.contributor || '匿名'}
-                        </Text>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 'auto', paddingTop: 6 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', overflow: 'hidden' }}>
+                          <Avatar size={20} icon={<UserOutlined />} style={{ backgroundColor: COLORS.secondary, flexShrink: 0 }} />
+                          <Text type="secondary" style={{ fontSize: 12, marginLeft: 6, color: COLORS.textLight }} ellipsis>
+                            {prompt.contributor || '匿名'}
+                          </Text>
+                        </div>
+                        {prompt.similar && prompt.similar.length > 0 && (
+                          <div style={{ 
+                            fontSize: 11, 
+                            color: COLORS.primary, 
+                            background: COLORS.accent, 
+                            padding: '1px 6px', 
+                            borderRadius: 6,
+                            flexShrink: 0,
+                            marginLeft: 8,
+                            fontWeight: 600,
+                            display: 'flex',
+                            alignItems: 'center'
+                          }}>
+                            {prompt.similar.length} 个变体
+                          </div>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -916,7 +932,10 @@ const PromptDrawer: React.FC<PromptDrawerProps> = ({ visible, onClose, onCreateT
                 <div style={{ marginBottom: 16 }}>
                   <Tabs 
                     activeKey={activeVariantIndex.toString()}
-                    onChange={(k) => setActiveVariantIndex(parseInt(k))}
+                    onChange={(k) => {
+                      setActiveVariantIndex(parseInt(k));
+                      setPreviewImageIndex(0);
+                    }}
                     type="card"
                     size="small"
                     items={[

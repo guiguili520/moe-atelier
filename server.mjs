@@ -63,6 +63,35 @@ const DEFAULT_BACKEND_CONFIG = {
   enableCollection: false,
 }
 
+const FORMAT_CONFIG_KEYS = [
+  'apiUrl',
+  'apiKey',
+  'model',
+  'apiVersion',
+  'vertexProjectId',
+  'vertexLocation',
+  'vertexPublisher',
+  'thinkingBudget',
+  'includeThoughts',
+  'includeImageConfig',
+  'includeSafetySettings',
+  'safety',
+  'imageConfig',
+  'webpQuality',
+  'useResponseModalities',
+  'customJson',
+]
+
+const pickFormatConfig = (config = {}) => {
+  const next = {}
+  FORMAT_CONFIG_KEYS.forEach((key) => {
+    if (Object.prototype.hasOwnProperty.call(config, key)) {
+      next[key] = config[key]
+    }
+  })
+  return next
+}
+
 const DEFAULT_GLOBAL_STATS = {
   totalRequests: 0,
   successCount: 0,
@@ -345,8 +374,23 @@ const normalizeCollectionPayload = (payload) => {
 
 const loadBackendState = async () => {
   const data = await readJsonFile(backendStatePath, null)
+  const config = { ...DEFAULT_BACKEND_CONFIG, ...(data?.config || {}) }
+  const rawFormatMap = data?.configByFormat
+  const configByFormat =
+    rawFormatMap && typeof rawFormatMap === 'object' && !Array.isArray(rawFormatMap)
+      ? { ...rawFormatMap }
+      : {}
+  const apiFormat =
+    config.apiFormat === 'gemini' || config.apiFormat === 'vertex'
+      ? config.apiFormat
+      : 'openai'
+  config.apiFormat = apiFormat
+  if (!configByFormat[apiFormat]) {
+    configByFormat[apiFormat] = pickFormatConfig(config)
+  }
   return {
-    config: { ...DEFAULT_BACKEND_CONFIG, ...(data?.config || {}) },
+    config,
+    configByFormat,
     tasksOrder: Array.isArray(data?.tasksOrder) ? data.tasksOrder : [],
     globalStats: { ...DEFAULT_GLOBAL_STATS, ...(data?.globalStats || {}) },
   }
@@ -430,10 +474,10 @@ const getCollectionImageKey = (item) => {
 }
 
 const collectImageKeysFromCollection = (items) => {
-  const keys = new Set()
+    const keys = new Set()
   if (!Array.isArray(items)) return keys
   items.forEach((item) => {
-    const key = getCollectionImageKey(item)
+        const key = getCollectionImageKey(item)
     if (!key) return
     keys.add(key)
   })
@@ -1553,8 +1597,23 @@ app.patch('/api/backend/state', requireBackendAuth, async (req, res) => {
   try {
     const current = await loadBackendState()
     const next = { ...current }
+    if (req.body?.configByFormat) {
+      const incoming = req.body.configByFormat
+      if (incoming && typeof incoming === 'object' && !Array.isArray(incoming)) {
+        next.configByFormat = { ...next.configByFormat, ...incoming }
+      }
+    }
     if (req.body?.config) {
       next.config = { ...DEFAULT_BACKEND_CONFIG, ...req.body.config }
+      const apiFormat =
+        next.config.apiFormat === 'gemini' || next.config.apiFormat === 'vertex'
+          ? next.config.apiFormat
+          : 'openai'
+      next.config.apiFormat = apiFormat
+      next.configByFormat = {
+        ...next.configByFormat,
+        [apiFormat]: pickFormatConfig(next.config),
+      }
     }
     if (Array.isArray(req.body?.tasksOrder)) {
       next.tasksOrder = Array.from(new Set(req.body.tasksOrder.filter((id) => typeof id === 'string')))
@@ -1795,6 +1854,21 @@ app.delete('/api/backend/image/:key', requireBackendAuth, async (req, res) => {
   } catch (err) {
     console.error('backend image delete error:', err)
     res.status(500).json({ error: 'Delete Error' })
+  }
+})
+
+app.post('/api/backend/images/cleanup', requireBackendAuth, async (req, res) => {
+  try {
+    const keys = Array.isArray(req.body?.keys) ? req.body.keys : []
+    const normalized = keys
+      .map((key) => path.basename(String(key)))
+      .filter((key) => key)
+    await cleanupUnusedImages(normalized)
+    scheduleOrphanCleanup()
+    res.json({ ok: true })
+  } catch (err) {
+    console.error('backend image cleanup error:', err)
+    res.status(500).json({ error: 'Cleanup Error' })
   }
 })
 

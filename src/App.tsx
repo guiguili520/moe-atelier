@@ -52,6 +52,9 @@ import {
   cleanupUnusedImageCache,
   collectTaskImageKeys,
   deleteImageCache,
+  type FormatConfig,
+  buildFormatConfig,
+  getDefaultFormatConfig,
   getTaskStorageKey,
   loadCollectionItems,
   loadConfig,
@@ -62,6 +65,7 @@ import {
   saveCollectionItems,
   STORAGE_KEYS,
 } from './app/storage';
+import { useDebouncedSync, useInputGuard } from './utils/inputSync';
 import {
   type ApiFormat,
   API_VERSION_OPTIONS,
@@ -89,6 +93,7 @@ import {
   putBackendCollection,
   setBackendMode as persistBackendMode,
   setBackendToken,
+  type BackendState,
 } from './utils/backendApi';
 
 const { Header, Content } = Layout;
@@ -120,6 +125,35 @@ const SAFETY_OPTIONS = [
   { label: 'BLOCK_MEDIUM', value: 'BLOCK_MEDIUM_AND_ABOVE' },
   { label: 'BLOCK_LOW', value: 'BLOCK_LOW_AND_ABOVE' },
 ];
+const API_FORMATS: ApiFormat[] = ['openai', 'gemini', 'vertex'];
+
+type FormatConfigMap = Record<ApiFormat, FormatConfig>;
+
+const buildBackendFormatConfigs = (
+  value: unknown,
+  fallbackConfig?: AppConfig,
+): FormatConfigMap => {
+  const next = API_FORMATS.reduce((acc, format) => {
+    acc[format] = getDefaultFormatConfig(format);
+    return acc;
+  }, {} as FormatConfigMap);
+  if (value && typeof value === 'object') {
+    const raw = value as Record<string, unknown>;
+    API_FORMATS.forEach((format) => {
+      const entry = raw[format];
+      if (entry && typeof entry === 'object') {
+        next[format] = { ...next[format], ...buildFormatConfig(entry as Partial<AppConfig>) };
+      }
+    });
+  }
+  if (fallbackConfig?.apiFormat) {
+    next[fallbackConfig.apiFormat] = {
+      ...next[fallbackConfig.apiFormat],
+      ...buildFormatConfig(fallbackConfig),
+    };
+  }
+  return next;
+};
 
 interface SortableTaskItemProps {
   task: TaskConfig;
@@ -288,6 +322,11 @@ function App() {
   const [backendAuthLoading, setBackendAuthLoading] = useState(false);
   const [backendSyncing, setBackendSyncing] = useState(false);
   const backendModeRef = useRef(initialBackendMode);
+  const configRef = useRef(config);
+  const configVisibleRef = useRef(configVisible);
+  const backendFormatConfigsRef = useRef<FormatConfigMap>(
+    buildBackendFormatConfigs(null),
+  );
   const localHydratingRef = useRef(false);
   const backendApplyingRef = useRef(false);
   const backendBootstrappedRef = useRef(false);
@@ -297,6 +336,36 @@ function App() {
   const backendCollectionLastPayloadRef = useRef<string>('');
   const collectedItemsRef = useRef(collectedItems);
   const collectionCountRef = useRef(collectedItems.length);
+  const configGuard = useInputGuard({
+    isEditing: () => configVisibleRef.current,
+    idleMs: 700,
+  });
+  const backendConfigPayload =
+    backendMode && backendReadyRef.current
+      ? { config, configByFormat: backendFormatConfigsRef.current }
+      : null;
+  const syncBackendConfig = useCallback(
+    (payload: { config: AppConfig; configByFormat: FormatConfigMap }) => {
+      void patchBackendState(payload).catch((err) => {
+        console.warn('后端配置同步失败:', err);
+      });
+    },
+    [],
+  );
+  const configSync = useDebouncedSync({
+    enabled: backendMode && backendReadyRef.current,
+    payload: backendConfigPayload,
+    delay: 500,
+    retryDelay: 200,
+    isBlocked: () => backendApplyingRef.current,
+    onSync: syncBackendConfig,
+  });
+  const {
+    markDirty: markConfigDirty,
+    clearDirty: clearConfigDirty,
+    shouldPreserve: shouldPreserveConfig,
+  } = configGuard;
+  const { markSynced: markConfigSynced } = configSync;
 
   const sensors = useSensors(
     useSensor(MouseSensor),
@@ -377,13 +446,52 @@ function App() {
     },
   };
 
-  const applyBackendState = useCallback(
-    (state: { config: AppConfig; tasksOrder: string[]; globalStats: GlobalStats }) => {
+  const applyBackendState = useCallback((state: BackendState) => {
       if (!backendModeRef.current) return;
       backendApplyingRef.current = true;
       backendReadyRef.current = true;
       if (state?.config) {
-        setConfig(state.config);
+        const formatConfigs = buildBackendFormatConfigs(
+          state.configByFormat,
+          state.config,
+        );
+        const incomingKey = JSON.stringify(state.config);
+        const currentKey = JSON.stringify(configRef.current);
+        const preserveConfig = shouldPreserveConfig(incomingKey, currentKey);
+        if (preserveConfig) {
+          const localConfig = configRef.current;
+          const localFormat =
+            localConfig.apiFormat === 'gemini' || localConfig.apiFormat === 'vertex'
+              ? localConfig.apiFormat
+              : 'openai';
+          formatConfigs[localFormat] = {
+            ...formatConfigs[localFormat],
+            ...buildFormatConfig(localConfig),
+          };
+          backendFormatConfigsRef.current = formatConfigs;
+          if (incomingKey === currentKey) {
+            clearConfigDirty();
+          }
+        } else {
+          backendFormatConfigsRef.current = formatConfigs;
+          setConfig(state.config);
+          clearConfigDirty();
+        }
+        markConfigSynced({
+          config: state.config,
+          configByFormat: formatConfigs,
+        });
+        const needsFormatSync =
+          !state.configByFormat ||
+          API_FORMATS.some((format) => !state.configByFormat?.[format]);
+        if (needsFormatSync) {
+          window.setTimeout(() => {
+            if (!backendModeRef.current) return;
+            void patchBackendState({ configByFormat: formatConfigs }).catch((err) => {
+              console.warn('后端配置缓存补全失败:', err);
+            });
+          }, 240);
+        }
       }
       const order = Array.isArray(state?.tasksOrder) ? state.tasksOrder : [];
       setTasks(order.map((id) => ({ id, prompt: '' })));
@@ -393,9 +501,7 @@ function App() {
       window.setTimeout(() => {
         backendApplyingRef.current = false;
       }, 200);
-    },
-    [form],
-  );
+    }, [form]);
 
   const bootstrapBackendState = useCallback(async () => {
     setBackendSyncing(true);
@@ -403,8 +509,13 @@ function App() {
       const state = await fetchBackendState();
       if (!backendModeRef.current) return;
       if (state.tasksOrder.length === 0) {
-        await patchBackendState({ config });
-        applyBackendState({ ...state, config });
+        const seededFormatConfigs = buildBackendFormatConfigs(null, config);
+        backendFormatConfigsRef.current = seededFormatConfigs;
+        await patchBackendState({
+          config,
+          configByFormat: seededFormatConfigs,
+        });
+        applyBackendState({ ...state, config, configByFormat: seededFormatConfigs });
         const newTaskId = uuidv4();
         await putBackendTask(newTaskId, {
           version: TASK_STATE_VERSION,
@@ -488,6 +599,17 @@ function App() {
   React.useEffect(() => {
     backendModeRef.current = backendMode;
   }, [backendMode]);
+
+  React.useEffect(() => {
+    configRef.current = config;
+  }, [config]);
+
+  React.useEffect(() => {
+    configVisibleRef.current = configVisible;
+    if (!configVisible) {
+      clearConfigDirty();
+    }
+  }, [configVisible, clearConfigDirty]);
 
   React.useEffect(() => {
     if (!configVisible) return;
@@ -604,14 +726,7 @@ function App() {
   }, []);
 
   React.useEffect(() => {
-    if (backendMode) {
-      if (!backendReadyRef.current) return;
-      if (backendApplyingRef.current) return;
-      void patchBackendState({ config }).catch((err) => {
-        console.warn('后端配置同步失败:', err);
-      });
-      return;
-    }
+    if (backendMode) return;
     if (localHydratingRef.current) return;
     saveConfig(config);
   }, [config, backendMode]);
@@ -910,6 +1025,8 @@ function App() {
 
   const isCollectionCacheKey = (key: string) => key.startsWith('collection:');
   const isBackendImageKey = (key: string) => /\.[a-z0-9]+$/i.test(key);
+  const getBackendFormatConfig = (format: ApiFormat) =>
+    backendFormatConfigsRef.current[format];
 
   const handleRemoveTask = (id: string) => {
     if (backendMode) {
@@ -946,8 +1063,14 @@ function App() {
       typeof changedValues?.apiFormat === 'string' &&
       changedValues.apiFormat !== config.apiFormat;
 
+    if (backendMode) {
+      markConfigDirty();
+    }
+
     if (formatChanged) {
-      const formatConfig = loadFormatConfig(nextFormat);
+      const formatConfig = backendMode
+        ? getBackendFormatConfig(nextFormat)
+        : loadFormatConfig(nextFormat);
       nextConfig = { ...nextConfig, ...formatConfig, apiFormat: nextFormat };
       form.setFieldsValue({
         apiUrl: formatConfig.apiUrl,
@@ -983,6 +1106,13 @@ function App() {
           form.setFieldsValue({ vertexProjectId: inferredProjectId });
         }
       }
+    }
+
+    if (backendMode) {
+      backendFormatConfigsRef.current = {
+        ...backendFormatConfigsRef.current,
+        [nextConfig.apiFormat]: buildFormatConfig(nextConfig),
+      };
     }
 
     setConfig(nextConfig);

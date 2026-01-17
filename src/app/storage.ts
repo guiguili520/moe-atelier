@@ -17,7 +17,7 @@ const TASK_STORAGE_PREFIX = 'moe-image-task:';
 
 type ApiFormat = AppConfig['apiFormat'];
 
-type FormatConfig = Pick<
+export type FormatConfig = Pick<
   AppConfig,
   | 'apiUrl'
   | 'apiKey'
@@ -151,7 +151,7 @@ const coerceImageConfig = (value: unknown) => {
   return { imageSize, aspectRatio };
 };
 
-const buildFormatConfig = (value: Partial<AppConfig> = {}): FormatConfig => ({
+export const buildFormatConfig = (value: Partial<AppConfig> = {}): FormatConfig => ({
   apiUrl: coerceConfigString(value.apiUrl),
   apiKey: coerceConfigString(value.apiKey),
   model: coerceConfigString(value.model),
@@ -169,6 +169,9 @@ const buildFormatConfig = (value: Partial<AppConfig> = {}): FormatConfig => ({
   useResponseModalities: coerceBoolean(value.useResponseModalities, false),
   customJson: coerceConfigString(value.customJson),
 });
+
+export const getDefaultFormatConfig = (apiFormat: ApiFormat): FormatConfig =>
+  buildFormatConfig(DEFAULT_FORMAT_CONFIGS[apiFormat]);
 
 const loadFormatConfigMap = (): Partial<Record<ApiFormat, Partial<FormatConfig>>> => {
   const raw = safeStorageGet(STORAGE_KEYS.configByFormat, 'app cache');

@@ -5,6 +5,8 @@ export interface PromptImage {
 export interface PromptSimilar {
   content: string;
   contributor?: string;
+  notes?: string;
+  images?: string[];
 }
 
 export interface PromptItem {

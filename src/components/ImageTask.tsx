@@ -38,6 +38,7 @@ import {
 import { calculateSuccessRate, formatDuration } from '../utils/stats';
 import {
   buildBackendImageUrl,
+  cleanupBackendImages,
   fetchBackendTask,
   generateBackendTask,
   getBackendToken,
@@ -47,6 +48,7 @@ import {
   uploadBackendImage,
   stripBackendToken,
 } from '../utils/backendApi';
+import { useDebouncedSync, useInputGuard } from '../utils/inputSync';
 
 const { Text } = Typography;
 const { TextArea } = Input;
@@ -71,6 +73,26 @@ type UploadFileWithMeta = UploadFile & {
   lastModified?: number;
   fromCollection?: boolean;
   sourceSignature?: string;
+};
+
+type CollectionUploadSnapshot = {
+  uploadKey: string;
+  sourceLocalKey?: string;
+  sourceBlob?: Blob;
+  sourceUrl?: string;
+  sourceSignature?: string;
+};
+
+type CollectionRequestSnapshot = {
+  prompt: string;
+  uploads: CollectionUploadSnapshot[];
+};
+
+const normalizePrompt = (prompt: string) => prompt.trim().replace(/\s+/g, ' ');
+
+const buildPromptKey = (prompt: string) => {
+  const normalized = normalizePrompt(prompt);
+  return normalized ? normalized.toLowerCase() : '__empty__';
 };
 
 const normalizeStoredResult = (item: PersistedSubTaskResult, backendMode: boolean): SubTaskResult => {
@@ -125,9 +147,9 @@ const normalizeConcurrency = (value: unknown, fallback = DEFAULT_CONCURRENCY) =>
 const ImageTask: React.FC<ImageTaskProps> = ({ id, storageKey, config, backendMode, onRemove, onStatsUpdate, onCollect, collectionRevision, dragAttributes, dragListeners }: ImageTaskProps) => {
   const [prompt, setPrompt] = useState('');
   const promptRef = useRef(prompt);
-  const promptDirtyRef = useRef(false);
   const promptFocusedRef = useRef(false);
   const [fileList, setFileList] = useState<UploadFileWithMeta[]>([]);
+  const fileListRef = useRef<UploadFileWithMeta[]>(fileList);
   const [concurrency, setConcurrency] = useState<number>(DEFAULT_CONCURRENCY);
   const [concurrencyInput, setConcurrencyInput] = useState<string>(String(DEFAULT_CONCURRENCY));
   const [enableSound, setEnableSound] = useState<boolean>(true);
@@ -147,10 +169,35 @@ const ImageTask: React.FC<ImageTaskProps> = ({ id, storageKey, config, backendMo
   const objectUrlMapRef = useRef<Map<string, string>>(new Map());
   const uploadKeysRef = useRef<Map<string, string>>(new Map());
   const cachedUploadKeysRef = useRef<Set<string>>(new Set());
-  const backendPersistTimerRef = useRef<number | null>(null);
-  const backendLastPayloadRef = useRef<string>('');
   const collectedCollectionKeysRef = useRef<Set<string>>(new Set());
+  const requestContextByResultIdRef = useRef<Map<string, CollectionRequestSnapshot>>(new Map());
   const lastCollectionRevisionRef = useRef(collectionRevision);
+  const promptGuard = useInputGuard({ isEditing: () => promptFocusedRef.current });
+  const backendPayload = React.useMemo(() => {
+    if (!backendMode || !hydrated) return null;
+    return {
+      prompt,
+      concurrency,
+      enableSound,
+      uploads: normalizeUploadsPayload(serializeUploads(fileList)),
+    };
+  }, [backendMode, hydrated, prompt, concurrency, enableSound, fileList]);
+  const taskSync = useDebouncedSync({
+    enabled: backendMode && hydrated,
+    payload: backendPayload,
+    delay: 300,
+    onSync: (payload) => {
+      void patchBackendTask(id, payload).catch((err) => {
+        console.warn('后端任务同步失败:', err);
+      });
+    },
+  });
+  const {
+    markDirty: markPromptDirty,
+    clearDirty: clearPromptDirty,
+    shouldPreserve: shouldPreservePromptInput,
+  } = promptGuard;
+  const { markSynced: markTaskSynced } = taskSync;
 
   const withBackendToken = (url: string) => {
     const cleaned = stripBackendToken(url);
@@ -187,12 +234,11 @@ const ImageTask: React.FC<ImageTaskProps> = ({ id, storageKey, config, backendMo
     const currentPrompt = promptRef.current;
     const shouldPreservePrompt =
       options.preservePrompt ||
-      promptFocusedRef.current ||
-      (promptDirtyRef.current && nextPrompt !== currentPrompt);
+      shouldPreservePromptInput(nextPrompt, currentPrompt);
     const nextConcurrency = normalizeConcurrency(stored.concurrency, DEFAULT_CONCURRENCY);
     const nextEnableSound = typeof stored.enableSound === 'boolean' ? stored.enableSound : true;
     const storedUploads = Array.isArray(stored.uploads) ? stored.uploads : [];
-    backendLastPayloadRef.current = JSON.stringify({
+    markTaskSynced({
       prompt: nextPrompt,
       concurrency: nextConcurrency,
       enableSound: nextEnableSound,
@@ -201,10 +247,10 @@ const ImageTask: React.FC<ImageTaskProps> = ({ id, storageKey, config, backendMo
 
     if (!shouldPreservePrompt) {
       promptRef.current = nextPrompt;
-      promptDirtyRef.current = false;
+      clearPromptDirty();
       setPrompt(nextPrompt);
     } else if (nextPrompt === currentPrompt) {
-      promptDirtyRef.current = false;
+      clearPromptDirty();
     }
     setConcurrency(nextConcurrency);
     setConcurrencyInput(String(nextConcurrency));
@@ -360,6 +406,10 @@ const ImageTask: React.FC<ImageTaskProps> = ({ id, storageKey, config, backendMo
   }, [prompt]);
 
   useEffect(() => {
+    fileListRef.current = fileList;
+  }, [fileList]);
+
+  useEffect(() => {
     audioRef.current = new Audio(SUCCESS_AUDIO_SRC);
     return () => {
       abortControllersRef.current.forEach((controller: AbortController) => controller.abort());
@@ -368,10 +418,6 @@ const ImageTask: React.FC<ImageTaskProps> = ({ id, storageKey, config, backendMo
       objectUrlMapRef.current.forEach((url: string) => URL.revokeObjectURL(url));
       objectUrlMapRef.current.clear();
       taskStartTimesRef.current.clear();
-      if (backendPersistTimerRef.current) {
-        clearTimeout(backendPersistTimerRef.current);
-        backendPersistTimerRef.current = null;
-      }
     };
   }, []);
 
@@ -388,30 +434,6 @@ const ImageTask: React.FC<ImageTaskProps> = ({ id, storageKey, config, backendMo
     };
     saveTaskState(storageKey, payload);
   }, [prompt, concurrency, enableSound, results, stats, storageKey, hydrated, fileList, backendMode]);
-
-  useEffect(() => {
-    if (!hydrated || !backendMode) return;
-    if (backendPersistTimerRef.current) {
-      clearTimeout(backendPersistTimerRef.current);
-    }
-    const payloadUploads = normalizeUploadsPayload(serializeUploads(fileList));
-    const payload: Partial<PersistedImageTaskState> = {
-      prompt,
-      concurrency,
-      enableSound,
-      uploads: payloadUploads,
-    };
-    const payloadKey = JSON.stringify(payload);
-    if (payloadKey === backendLastPayloadRef.current) {
-      return;
-    }
-    backendLastPayloadRef.current = payloadKey;
-    backendPersistTimerRef.current = window.setTimeout(() => {
-      void patchBackendTask(id, payload).catch((err) => {
-        console.warn('后端任务保存失败:', err);
-      });
-    }, 300);
-  }, [prompt, concurrency, enableSound, fileList, hydrated, backendMode, id]);
 
   useEffect(() => {
     if (!backendMode) return;
@@ -457,6 +479,7 @@ const ImageTask: React.FC<ImageTaskProps> = ({ id, storageKey, config, backendMo
 
   useEffect(() => {
     collectedCollectionKeysRef.current.clear();
+    requestContextByResultIdRef.current.clear();
   }, [id]);
 
   useEffect(() => {
@@ -464,7 +487,7 @@ const ImageTask: React.FC<ImageTaskProps> = ({ id, storageKey, config, backendMo
     if (lastCollectionRevisionRef.current === collectionRevision) return;
     lastCollectionRevisionRef.current = collectionRevision;
     Array.from(collectedCollectionKeysRef.current).forEach((key) => {
-      if (key.startsWith('collection:upload:')) {
+      if (key.startsWith('collection:upload:') || key.startsWith('upload:')) {
         collectedCollectionKeysRef.current.delete(key);
       }
     });
@@ -472,13 +495,16 @@ const ImageTask: React.FC<ImageTaskProps> = ({ id, storageKey, config, backendMo
 
   useEffect(() => {
     if (!backendMode || !config.enableCollection || !onCollect) return;
-    const currentPrompt = promptRef.current;
     results.forEach((result) => {
       if (result.status !== 'success') return;
       const endTime =
         typeof result.endTime === 'number' ? result.endTime : result.startTime;
       if (!endTime) return;
       const collectionKey = buildResultCollectionKey(result.id, endTime);
+      if (collectedCollectionKeysRef.current.has(collectionKey)) return;
+      const snapshot = requestContextByResultIdRef.current.get(result.id);
+      if (!snapshot) return;
+      const requestPrompt = snapshot.prompt;
       const resolvedSourceUrl =
         resolveBackendDisplayUrl(result.localKey, result.sourceUrl) ||
         result.displayUrl ||
@@ -487,14 +513,12 @@ const ImageTask: React.FC<ImageTaskProps> = ({ id, storageKey, config, backendMo
         collectionKey,
         sourceUrl: resolvedSourceUrl || undefined,
         sourceLocalKey: result.localKey,
-        prompt: currentPrompt,
+        prompt: requestPrompt,
         timestamp: endTime,
         taskId: id,
       });
+      collectReferenceImagesForCollection(snapshot);
     });
-    if (results.some((result) => result.status === 'success')) {
-      collectReferenceImagesForCollection();
-    }
   }, [backendMode, config.enableCollection, onCollect, results, id]);
 
   useEffect(() => {
@@ -536,7 +560,9 @@ const ImageTask: React.FC<ImageTaskProps> = ({ id, storageKey, config, backendMo
         clearObjectUrl(key);
         cachedUploadKeysRef.current.delete(key);
         if (!backendMode) {
-          void deleteImageBlob(key);
+          if (!isCollectionCacheKey(key)) {
+            void deleteImageBlob(key);
+          }
         }
         return;
       }
@@ -556,7 +582,7 @@ const ImageTask: React.FC<ImageTaskProps> = ({ id, storageKey, config, backendMo
   };
 
   const handlePromptChange = (value: string) => {
-    promptDirtyRef.current = true;
+    markPromptDirty();
     promptRef.current = value;
     setPrompt(value);
   };
@@ -567,6 +593,59 @@ const ImageTask: React.FC<ImageTaskProps> = ({ id, storageKey, config, backendMo
 
   const handlePromptBlur = () => {
     promptFocusedRef.current = false;
+  };
+
+  const resolveImageExtension = (mimeType: string) => {
+    const normalized = mimeType.toLowerCase();
+    if (normalized === 'image/jpeg') return 'jpg';
+    if (normalized === 'image/png') return 'png';
+    if (normalized === 'image/webp') return 'webp';
+    if (normalized === 'image/gif') return 'gif';
+    if (normalized.startsWith('image/')) return normalized.split('/')[1];
+    return 'png';
+  };
+
+  const handlePromptPaste = (event: React.ClipboardEvent<HTMLTextAreaElement>) => {
+    const clipboard = event.clipboardData;
+    if (!clipboard) return;
+    const imageFiles: File[] = [];
+    Array.from(clipboard.items || []).forEach((item) => {
+      if (item.kind === 'file' && item.type.startsWith('image/')) {
+        const file = item.getAsFile();
+        if (file) imageFiles.push(file);
+      }
+    });
+    if (imageFiles.length === 0 && clipboard.files?.length) {
+      Array.from(clipboard.files).forEach((file) => {
+        if (file.type.startsWith('image/')) {
+          imageFiles.push(file);
+        }
+      });
+    }
+    if (imageFiles.length === 0) return;
+    event.preventDefault();
+
+    const timestamp = Date.now();
+    const uploads: UploadFile[] = imageFiles.map((file, index) => {
+      const mimeType = file.type || 'image/png';
+      const extension = resolveImageExtension(mimeType);
+      const normalized = new File(
+        [file],
+        `paste-${timestamp}-${index + 1}.${extension}`,
+        { type: mimeType, lastModified: timestamp },
+      );
+      return {
+        uid: uuidv4(),
+        name: normalized.name,
+        status: 'done',
+        originFileObj: normalized as RcFile,
+        type: normalized.type,
+        size: normalized.size,
+        lastModified: normalized.lastModified,
+      };
+    });
+
+    handleUploadChange({ fileList: [...fileList, ...uploads] });
   };
 
   const handleConcurrencyInputChange = (value: string) => {
@@ -616,8 +695,40 @@ const ImageTask: React.FC<ImageTaskProps> = ({ id, storageKey, config, backendMo
     }
     return `${name}:${size}:${lastModified}:${type || ''}`;
   };
-  const isCollectionUploadKey = (key?: string) =>
-    Boolean(key && key.startsWith('collection:upload:'));
+  const isCollectionCacheKey = (key?: string) =>
+    Boolean(key && key.startsWith('collection:'));
+  const buildCollectionRequestSnapshot = (requestPrompt: string): CollectionRequestSnapshot => {
+    const uploads: CollectionUploadSnapshot[] = [];
+    fileList.forEach((file) => {
+      const uploadKey = file.uid || file.localKey;
+      if (!uploadKey) return;
+      if (backendMode && !file.localKey) return;
+      const signature = file.sourceSignature || buildUploadSignature(file);
+      const sourceBlob = file.originFileObj as Blob | undefined;
+      const sourceUrl = typeof file.thumbUrl === 'string' ? file.thumbUrl : undefined;
+      const sourceLocalKey = file.localKey;
+      if (!sourceBlob && !sourceLocalKey && !sourceUrl) return;
+      uploads.push({
+        uploadKey,
+        sourceLocalKey,
+        sourceBlob,
+        sourceUrl,
+        sourceSignature: signature || undefined,
+      });
+    });
+    return { prompt: requestPrompt, uploads };
+  };
+  const buildUploadCollectionDedupeKey = (
+    requestPrompt: string,
+    upload: CollectionUploadSnapshot,
+    collectionKey: string,
+  ) => {
+    const promptKey = buildPromptKey(requestPrompt);
+    if (upload.sourceSignature) {
+      return `upload:${promptKey}:${upload.sourceSignature}`;
+    }
+    return `upload:${promptKey}:${upload.uploadKey || collectionKey}`;
+  };
 
   const getImageDb = () => {
     if (typeof indexedDB === 'undefined') return null;
@@ -689,6 +800,7 @@ const ImageTask: React.FC<ImageTaskProps> = ({ id, storageKey, config, backendMo
 
   const collectImageForCollection = async (options: {
     collectionKey: string;
+    dedupeKey?: string;
     sourceUrl?: string;
     sourceLocalKey?: string;
     sourceBlob?: Blob;
@@ -698,13 +810,14 @@ const ImageTask: React.FC<ImageTaskProps> = ({ id, storageKey, config, backendMo
     taskId: string;
   }) => {
     if (!config.enableCollection || !onCollect) return;
-    if (collectedCollectionKeysRef.current.has(options.collectionKey)) return;
+    const dedupeKey = options.dedupeKey || options.collectionKey;
+    if (collectedCollectionKeysRef.current.has(dedupeKey)) return;
 
     if (backendMode) {
       const backendLocalKey =
         options.sourceLocalKey || extractBackendImageKey(options.sourceUrl);
       if (!backendLocalKey) return;
-      collectedCollectionKeysRef.current.add(options.collectionKey);
+      collectedCollectionKeysRef.current.add(dedupeKey);
       onCollect({
         id: options.collectionKey,
         prompt: options.prompt,
@@ -716,7 +829,7 @@ const ImageTask: React.FC<ImageTaskProps> = ({ id, storageKey, config, backendMo
       return;
     }
 
-    collectedCollectionKeysRef.current.add(options.collectionKey);
+    collectedCollectionKeysRef.current.add(dedupeKey);
     let blob: Blob | null = null;
     if (options.sourceBlob) {
       blob = options.sourceBlob;
@@ -744,26 +857,24 @@ const ImageTask: React.FC<ImageTaskProps> = ({ id, storageKey, config, backendMo
     });
   };
 
-  const collectReferenceImagesForCollection = () => {
+  const collectReferenceImagesForCollection = (snapshot: CollectionRequestSnapshot) => {
     if (!config.enableCollection || !onCollect) return;
-    if (fileList.length === 0) return;
-    const currentPrompt = promptRef.current;
-    fileList.forEach((file) => {
-      if (file.fromCollection || isCollectionUploadKey(file.localKey)) return;
-      const signature = file.sourceSignature || buildUploadSignature(file);
-      const uploadKey = file.uid || file.localKey;
-      if (!uploadKey) return;
-      if (backendMode && !file.localKey) return;
-      const collectionKey = buildUploadCollectionKey(id, uploadKey);
-      const sourceBlob = file.originFileObj as Blob | undefined;
-      const sourceUrl = typeof file.thumbUrl === 'string' ? file.thumbUrl : undefined;
+    if (snapshot.uploads.length === 0) return;
+    snapshot.uploads.forEach((upload) => {
+      const collectionKey = buildUploadCollectionKey(id, upload.uploadKey);
+      const dedupeKey = buildUploadCollectionDedupeKey(
+        snapshot.prompt,
+        upload,
+        collectionKey,
+      );
       void collectImageForCollection({
         collectionKey,
-        sourceBlob,
-        sourceLocalKey: file.localKey,
-        sourceUrl,
-        sourceSignature: signature || undefined,
-        prompt: currentPrompt,
+        dedupeKey,
+        sourceBlob: upload.sourceBlob,
+        sourceLocalKey: upload.sourceLocalKey,
+        sourceUrl: upload.sourceUrl,
+        sourceSignature: upload.sourceSignature,
+        prompt: snapshot.prompt,
         timestamp: Date.now(),
         taskId: id,
       });
@@ -1251,6 +1362,8 @@ const ImageTask: React.FC<ImageTaskProps> = ({ id, storageKey, config, backendMo
         return;
       }
       setIsGlobalLoading(true);
+      const requestSnapshot = buildCollectionRequestSnapshot(prompt);
+      const prevStatuses = new Map(results.map((item) => [item.id, item.status]));
       try {
         await patchBackendTask(id, {
           prompt,
@@ -1259,6 +1372,13 @@ const ImageTask: React.FC<ImageTaskProps> = ({ id, storageKey, config, backendMo
           uploads: serializeUploads(fileList),
         });
         const nextState = await generateBackendTask(id);
+        nextState.results.forEach((result) => {
+          const prevStatus = prevStatuses.get(result.id);
+          const isInFlight = result.status === 'loading' || result.status === 'pending';
+          if (!prevStatus || (isInFlight && prevStatus !== 'loading' && prevStatus !== 'pending')) {
+            requestContextByResultIdRef.current.set(result.id, requestSnapshot);
+          }
+        });
         applyBackendTaskState(nextState);
       } catch (err) {
         console.error(err);
@@ -1310,6 +1430,10 @@ const ImageTask: React.FC<ImageTaskProps> = ({ id, storageKey, config, backendMo
   const handleRetrySingle = (subTaskId: string) => {
     if (backendMode) {
       setIsGlobalLoading(true);
+      requestContextByResultIdRef.current.set(
+        subTaskId,
+        buildCollectionRequestSnapshot(prompt),
+      );
       void retryBackendSubTask(id, subTaskId)
         .then((nextState) => {
           applyBackendTaskState(nextState);
@@ -1332,6 +1456,10 @@ const ImageTask: React.FC<ImageTaskProps> = ({ id, storageKey, config, backendMo
 
   const handleResumeSingle = (subTaskId: string) => {
     if (backendMode) {
+      requestContextByResultIdRef.current.set(
+        subTaskId,
+        buildCollectionRequestSnapshot(prompt),
+      );
       void retryBackendSubTask(id, subTaskId)
         .then((nextState) => {
           applyBackendTaskState(nextState);
@@ -1386,6 +1514,8 @@ const ImageTask: React.FC<ImageTaskProps> = ({ id, storageKey, config, backendMo
     abortControllersRef.current.set(subTaskId, controller);
     updateStats('request');
     const startTime = taskStartTimesRef.current.get(subTaskId) || Date.now();
+    const requestSnapshot = buildCollectionRequestSnapshot(prompt);
+    requestContextByResultIdRef.current.set(subTaskId, requestSnapshot);
 
     try {
       const apiFormat = config.apiFormat || 'openai';
@@ -1521,11 +1651,11 @@ const ImageTask: React.FC<ImageTaskProps> = ({ id, storageKey, config, backendMo
             collectionKey,
             sourceUrl: imageUrl,
             sourceLocalKey: localKey,
-            prompt: promptRef.current,
+            prompt: requestSnapshot.prompt,
             timestamp: endTime,
             taskId: id,
           });
-          collectReferenceImagesForCollection();
+          collectReferenceImagesForCollection(requestSnapshot);
         }
 
         playSuccessSound();
@@ -1667,6 +1797,13 @@ const ImageTask: React.FC<ImageTaskProps> = ({ id, storageKey, config, backendMo
             name: file.name,
             lastModified: file.lastModified ?? file.originFileObj?.lastModified,
           });
+          const stillPresent = fileListRef.current.some((item) => item.uid === file.uid);
+          if (!stillPresent) {
+            void cleanupBackendImages([key]).catch((err) => {
+              console.warn('后端参考图清理失败:', err);
+            });
+            continue;
+          }
           setFileList((prev) =>
             prev.map((item) =>
               item.uid === file.uid
@@ -1812,6 +1949,7 @@ const ImageTask: React.FC<ImageTaskProps> = ({ id, storageKey, config, backendMo
             onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => handlePromptChange(e.target.value)}
             onFocus={handlePromptFocus}
             onBlur={handlePromptBlur}
+            onPaste={handlePromptPaste}
             autoSize={{ minRows: 3, maxRows: 12 }}
             variant="borderless"
             style={{ padding: '12px', fontSize: 14, resize: 'vertical', background: 'transparent', color: '#665555' }}
@@ -2051,7 +2189,7 @@ const ImageTask: React.FC<ImageTaskProps> = ({ id, storageKey, config, backendMo
                         </div>
                       </>
                     ) : (
-                      <div style={{ textAlign: 'center', padding: 8, width: '100%' }}>
+                      <div style={{ textAlign: 'center', padding: 8, width: '100%', position: 'relative', zIndex: 3 }}>
                         {result.status === 'loading' ? (
                           <Space direction="vertical" size={8}>
                             <Spin indicator={<LoadingOutlined style={{ fontSize: 24, color: '#FF9EB5' }} spin />} />

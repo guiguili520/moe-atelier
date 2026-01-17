@@ -2,10 +2,13 @@ import type { AppConfig } from '../types/app';
 import type { CollectionItem } from '../types/collection';
 import type { GlobalStats } from '../types/stats';
 import type { PersistedImageTaskState } from '../types/imageTask';
+import type { ApiFormat } from './apiUrl';
+import type { FormatConfig } from '../app/storage';
 import { safeStorageGet, safeStorageRemove, safeStorageSet } from './storage';
 
 export interface BackendState {
   config: AppConfig;
+  configByFormat?: Partial<Record<ApiFormat, FormatConfig>>;
   tasksOrder: string[];
   globalStats: GlobalStats;
 }
@@ -129,6 +132,12 @@ export const deleteBackendTask = async (taskId: string) =>
 export const deleteBackendImage = async (key: string) =>
   backendJson<{ ok: true }>(`/api/backend/image/${encodeURIComponent(key)}`, {
     method: 'DELETE',
+  });
+
+export const cleanupBackendImages = async (keys: string[]) =>
+  backendJson<{ ok: true }>('/api/backend/images/cleanup', {
+    method: 'POST',
+    body: { keys },
   });
 
 export const generateBackendTask = async (taskId: string) =>
