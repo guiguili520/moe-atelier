@@ -3,6 +3,7 @@ import { Drawer, Button, Typography, Space, Image, Tooltip, message } from 'antd
 import Icon, { DeleteFilled, DownloadOutlined, PictureFilled, LeftOutlined, RightOutlined, CopyFilled, FileTextOutlined } from '@ant-design/icons';
 import { openImageDb, IMAGE_STORE_NAME } from '../utils/imageDb';
 import { buildBackendImageUrl } from '../utils/backendApi';
+import { copyTextToClipboard } from '../utils/clipboard';
 import type { CollectionItem } from '../types/collection';
 import { COLORS } from '../theme/colors';
 
@@ -113,10 +114,14 @@ const CollectionGroupCard: React.FC<{
     dragDistanceRef.current = Math.abs(walk);
   };
 
-  const handleCopyPrompt = () => {
+  const handleCopyPrompt = async () => {
     if (group.prompt && group.prompt !== '无提示词') {
-      navigator.clipboard.writeText(group.prompt);
-      message.success('已复制到剪贴板');
+      const copied = await copyTextToClipboard(group.prompt);
+      if (copied) {
+        message.success('已复制到剪贴板');
+      } else {
+        message.error('复制失败，请在 HTTPS 环境下访问或手动复制');
+      }
     }
   };
 

@@ -15,6 +15,7 @@ import {
 } from '@ant-design/icons';
 import type { PromptData, PromptItem } from '../types/prompt';
 import { safeStorageGet, safeStorageSet } from '../utils/storage';
+import { copyTextToClipboard } from '../utils/clipboard';
 import { COLORS } from '../theme/colors';
 
 const { Title, Text } = Typography;
@@ -195,11 +196,15 @@ const PromptCard: React.FC<PromptCardProps> = ({
 }) => {
   const [activeImageIndex, setActiveImageIndex] = useState(0);
   const [isHovered, setIsHovered] = useState(false);
+  const screens = useBreakpoint();
+  const isMobile = !screens.md;
 
   useEffect(() => {
     let interval: ReturnType<typeof setInterval>;
     const images = prompt.images;
-    if (isHovered && images && images.length > 1) {
+    const shouldAutoScroll = (isHovered || isMobile) && images && images.length > 1;
+
+    if (shouldAutoScroll) {
       interval = setInterval(() => {
         setActiveImageIndex((prev) => (prev + 1) % images.length);
       }, 1500);
@@ -207,7 +212,7 @@ const PromptCard: React.FC<PromptCardProps> = ({
       setActiveImageIndex(0);
     }
     return () => clearInterval(interval);
-  }, [isHovered, prompt.images]);
+  }, [isHovered, prompt.images, isMobile]);
 
   return (
     <div 
@@ -1782,31 +1787,48 @@ const PromptDrawer: React.FC<PromptDrawerProps> = ({ visible, onClose, onCreateT
               <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 16 }}>
                 <div style={{ 
                   background: '#fff', 
-                  padding: 16, 
                   borderRadius: 16, 
                   border: `1px solid ${COLORS.accent}`,
                   boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.02)',
                   flex: 1,
                   maxHeight: isMobile ? 200 : 300,
-                  overflowY: 'auto'
+                  display: 'flex',
+                  flexDirection: 'column',
+                  overflow: 'hidden'
                 }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
-                    <Text type="secondary" style={{ fontSize: 12 }}><FileTextOutlined /> 提示词内容</Text>
+                  <div style={{ 
+                    display: 'flex', 
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    padding: '6px 16px',
+                    background: '#fff',
+                    flexShrink: 0
+                  }}>
+                    <Text type="secondary" style={{ fontSize: 12, display: 'inline-flex', alignItems: 'center', gap: 6, color: COLORS.textLight }}>
+                      <FileTextOutlined /> 提示词内容
+                    </Text>
                     <Tooltip title="复制内容">
                       <Button 
                         type="text" 
                         size="small" 
                         icon={<CopyOutlined />} 
-                        onClick={() => {
-                          navigator.clipboard.writeText(currentPreviewData.content);
-                          message.success('已复制到剪贴板');
+                        style={{ color: COLORS.textLight }}
+                        onClick={async () => {
+                          const copied = await copyTextToClipboard(currentPreviewData.content);
+                          if (copied) {
+                            message.success('已复制到剪贴板');
+                          } else {
+                            message.error('复制失败，请在 HTTPS 环境下访问或手动复制');
+                          }
                         }}
                       />
                     </Tooltip>
                   </div>
-                  <Text style={{ fontSize: 14, fontFamily: 'monospace', color: COLORS.text }}>
-                    {currentPreviewData.content}
-                  </Text>
+                  <div style={{ padding: '6px 16px 12px', overflowY: 'auto', flex: 1, minHeight: 0 }}>
+                    <Text style={{ fontSize: 14, fontFamily: 'monospace', color: COLORS.text }}>
+                      {currentPreviewData.content}
+                    </Text>
+                  </div>
                 </div>
 
                 {/* Tags */}
