@@ -13,9 +13,12 @@ export interface PromptItem {
   id: string;
   title: string;
   content: string;
+  createdAt?: number;
   tags?: string[];
   contributor?: string;
+  notes?: string;
   images?: string[];
+  refs?: string[];
   similar?: PromptSimilar[];
   isFavorite?: boolean; // 本地状态
 }

@@ -983,6 +983,25 @@ void cleanupOrphanedImages().catch((err) => {
 })
 
 const backendTokens = new Set()
+const PROMPT_MANAGER_URL = 'https://prompt.vioaki.xyz/api/gallery'
+
+app.get('/api/prompt-manager', async (_req, res) => {
+  try {
+    const response = await fetch(PROMPT_MANAGER_URL, {
+      headers: { Accept: 'application/json', Connection: 'close' },
+    })
+    if (!response.ok) {
+      const message = await readResponseError(response)
+      res.status(response.status).json({ error: message })
+      return
+    }
+    const data = await response.json()
+    res.json(data)
+  } catch (err) {
+    console.error('prompt-manager proxy error:', err)
+    res.status(500).json({ error: 'Proxy Error' })
+  }
+})
 
 const requireBackendAuth = (req, res, next) => {
   const headerToken = req.headers['x-backend-token']

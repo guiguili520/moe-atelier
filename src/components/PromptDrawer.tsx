@@ -11,7 +11,8 @@ import {
   FilterFilled, UserOutlined, FileTextOutlined,
   FireFilled, LeftOutlined, RightOutlined,
   CopyOutlined, CompassFilled, CloudUploadOutlined,
-  EyeInvisibleOutlined, ArrowLeftOutlined
+  EyeInvisibleOutlined, ArrowLeftOutlined,
+  InfoCircleFilled
 } from '@ant-design/icons';
 import type { PromptData, PromptItem } from '../types/prompt';
 import { safeStorageGet, safeStorageSet } from '../utils/storage';
@@ -188,16 +189,23 @@ interface PromptCardProps {
   onToggleReveal: (e: React.MouseEvent, id: string) => void;
   onClick: (prompt: ExtendedPromptItem) => void;
   onContributorClick: (e: React.MouseEvent, name?: string) => void;
+  showSectionTag?: boolean;
+  timeLabel?: string;
 }
 
 const PromptCard: React.FC<PromptCardProps> = ({
   prompt, favorites, revealedImages, isNew, isNSFW,
-  onToggleFavorite, onToggleReveal, onClick, onContributorClick
+  onToggleFavorite, onToggleReveal, onClick, onContributorClick, showSectionTag = true, timeLabel = ''
 }) => {
   const [activeImageIndex, setActiveImageIndex] = useState(0);
   const [isHovered, setIsHovered] = useState(false);
   const screens = useBreakpoint();
   const isMobile = !screens.md;
+
+  const shortTimeLabel = useMemo(() => {
+    if (!timeLabel) return '';
+    return timeLabel.split(' ')[0];
+  }, [timeLabel]);
 
   useEffect(() => {
     let interval: ReturnType<typeof setInterval>;
@@ -299,38 +307,68 @@ const PromptCard: React.FC<PromptCardProps> = ({
         {/* Tags Overlay */}
         <div style={{ 
           position: 'absolute', top: 8, left: 8, right: 8, display: 'flex', justifyContent: 'space-between',
-          zIndex: 10
+          zIndex: 10, pointerEvents: 'none'
         }}>
-           <div style={{ 
-            background: 'rgba(255,255,255,0.9)', 
-            padding: '2px 8px', 
+          {/* 左上角：时间 */}
+          <div style={{ pointerEvents: 'auto' }}>
+            {timeLabel && (
+              <div style={{ 
+                background: 'rgba(255,255,255,0.9)', 
+                padding: '2px 8px', 
+                borderRadius: 10,
+                fontSize: 10,
+                fontWeight: 700,
+                color: COLORS.text,
+                backdropFilter: 'blur(4px)',
+                boxShadow: '0 2px 4px rgba(0,0,0,0.05)'
+              }}>
+                {shortTimeLabel}
+              </div>
+            )}
+          </div>
+
+          {/* 右上角：NEW */}
+          <div style={{ pointerEvents: 'auto' }}>
+            {isNew && (
+              <div style={{ 
+                background: COLORS.new, color: '#fff',
+                padding: '2px 6px', borderRadius: 10,
+                fontSize: 10, fontWeight: 800,
+                boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+              }}>
+                NEW
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* 左下角：分类  */}
+        {showSectionTag && (
+          <div style={{
+            position: 'absolute',
+            bottom: 10,
+            left: 10,
+            padding: '2px 8px',
             borderRadius: 10,
+            background: 'rgba(255,255,255,0.9)',
+            color: COLORS.text,
             fontSize: 10,
             fontWeight: 700,
-            color: COLORS.text,
             backdropFilter: 'blur(4px)',
-            boxShadow: '0 2px 4px rgba(0,0,0,0.05)'
+            boxShadow: '0 2px 4px rgba(0,0,0,0.05)',
+            zIndex: 10
           }}>
             {prompt.sectionTitle}
           </div>
-          {isNew && (
-            <div style={{ 
-              background: COLORS.new, color: '#fff',
-              padding: '2px 6px', borderRadius: 10,
-              fontSize: 10, fontWeight: 800,
-              boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
-            }}>
-              NEW
-            </div>
-          )}
-        </div>
+        )}
 
         {/* Slideshow Indicator */}
         {prompt.images && prompt.images.length > 1 && (
           <div style={{
             position: 'absolute',
             bottom: 12,
-            left: 12,
+            left: '50%',
+            transform: 'translateX(-50%)',
             display: 'flex',
             gap: 4,
             zIndex: 10
@@ -419,6 +457,118 @@ const PromptCard: React.FC<PromptCardProps> = ({
 };
 
 const DEFAULT_DATA_SOURCE = 'https://raw.githubusercontent.com/unknowlei/nanobanana-website/refs/heads/main/public/data.json';
+const PROMPT_MANAGER_SOURCE = '/api/prompt-manager';
+const BUILTIN_SOURCES = [
+  { label: 'nanobanana-website', value: DEFAULT_DATA_SOURCE },
+  { label: 'Prompt-Manager', value: PROMPT_MANAGER_SOURCE }
+];
+const PROMO_NOTE_PATTERNS = [/labnana/i, /aff=/i, /邀请链接/, /分享给你试试/, /通过我的邀请链接/];
+const NSFW_KEYWORDS = ['猎奇', '恐怖'];
+
+const hasNsfwKeyword = (value: string) => {
+  const normalized = value.trim();
+  return NSFW_KEYWORDS.some(keyword => normalized.includes(keyword));
+};
+
+const sanitizePromoNotes = (text?: string) => {
+  if (!text) return '';
+  const lines = text
+    .split(/\r?\n/)
+    .map(line => line.trim())
+    .filter(line => line.length > 0)
+    .filter(line => !PROMO_NOTE_PATTERNS.some(pattern => pattern.test(line)));
+  return lines.join('\n');
+};
+
+const normalizePromptManagerRefs = (refs: unknown): string[] => {
+  if (!Array.isArray(refs)) return [];
+  return refs
+    .map((ref) => {
+      if (!ref || typeof ref !== 'object') return null;
+      const record = ref as Record<string, unknown>;
+      const filePath = typeof record.file_path === 'string' ? record.file_path : '';
+      if (!filePath) return null;
+      if (record.is_placeholder === true || filePath.includes('{{')) return null;
+      const position = typeof record.position === 'number' ? record.position : Number.POSITIVE_INFINITY;
+      return { filePath, position };
+    })
+    .filter((value): value is { filePath: string; position: number } => Boolean(value))
+    .sort((a, b) => a.position - b.position)
+    .map((ref) => ref.filePath);
+};
+
+const normalizePromptManagerTimestamp = (createdAt?: string) => {
+  if (!createdAt) return null;
+  const normalized = createdAt.replace(/\.(\d{3})\d+/, '.$1');
+  const iso = /Z|[+-]\d{2}:\d{2}$/.test(normalized) ? normalized : `${normalized}Z`;
+  const time = Date.parse(iso);
+  return Number.isNaN(time) ? null : time;
+};
+
+const buildPromptManagerId = (item: Record<string, unknown>, index: number) => {
+  const createdAt = typeof item.created_at === 'string' ? item.created_at : '';
+  const timestamp = normalizePromptManagerTimestamp(createdAt);
+  const baseId = (typeof item.id === 'string' || typeof item.id === 'number') ? item.id : index;
+  if (timestamp) {
+    return `imported-${timestamp}-${baseId}`;
+  }
+  return `pm-${baseId}`;
+};
+
+const normalizePromptManagerData = (payload: { data?: Record<string, unknown>[] }): PromptData => {
+  const items = Array.isArray(payload?.data) ? payload.data : [];
+  const prompts = items.map((item, index) => {
+    const fallbackId = (typeof item.id === 'string' || typeof item.id === 'number') ? item.id : index;
+    const createdAt = normalizePromptManagerTimestamp(typeof item.created_at === 'string' ? item.created_at : '');
+    const notes = sanitizePromoNotes(typeof item.description === 'string' ? item.description : '');
+    const imageUrl = (typeof item.file_path === 'string' && item.file_path)
+      || (typeof item.thumbnail_path === 'string' && item.thumbnail_path)
+      || '';
+    const tags = Array.isArray(item.tags) ? item.tags.filter(tag => typeof tag === 'string' && tag.length > 0) : undefined;
+    const refImages = normalizePromptManagerRefs(item.refs);
+    return {
+      id: buildPromptManagerId(item, index),
+      title: typeof item.title === 'string' && item.title ? item.title : `未命名-${fallbackId}`,
+      content: typeof item.prompt === 'string' ? item.prompt : '',
+      createdAt: createdAt ?? undefined,
+      tags: tags && tags.length > 0 ? tags : undefined,
+      contributor: typeof item.author === 'string' && item.author ? item.author : undefined,
+      notes: notes || undefined,
+      images: imageUrl ? [imageUrl] : undefined,
+      refs: refImages.length > 0 ? refImages : undefined
+    };
+  });
+  return {
+    sections: [
+      {
+        id: 'prompt-manager',
+        title: 'Prompt-Manager',
+        prompts
+      }
+    ]
+  };
+};
+
+const parsePromptTimestamp = (id: string) => {
+  if (!id) return null;
+  if (/^\d{13}$/.test(id)) return parseInt(id, 10);
+  if (id.startsWith('imported-') || id.startsWith('u-')) {
+    const part = id.split('-')[1];
+    if (/^\d{13}$/.test(part)) return parseInt(part, 10);
+  }
+  return null;
+};
+
+const formatPromptTime = (id: string, createdAt?: number) => {
+  const timestamp = typeof createdAt === 'number' && !Number.isNaN(createdAt)
+    ? createdAt
+    : parsePromptTimestamp(id);
+  if (!timestamp) return '';
+  const date = new Date(timestamp);
+  if (Number.isNaN(date.getTime())) return '';
+  const pad = (value: number) => String(value).padStart(2, '0');
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}`;
+};
 const STORAGE_KEY_FAVORITES = 'moe-atelier:favorites';
 const STORAGE_KEY_SOURCE = 'moe-atelier:prompt-source';
 const NEW_WINDOW_MS = 48 * 60 * 60 * 1000;
@@ -440,6 +590,8 @@ const PromptDrawer: React.FC<PromptDrawerProps> = ({ visible, onClose, onCreateT
   const [sourceUrl, setSourceUrl] = useState<string>(() => safeStorageGet(STORAGE_KEY_SOURCE) || DEFAULT_DATA_SOURCE);
   const [data, setData] = useState<PromptData | null>(null);
   const [loading, setLoading] = useState(false);
+  const isBuiltInSource = BUILTIN_SOURCES.some(source => source.value === sourceUrl);
+  const isPromptManagerSource = sourceUrl === PROMPT_MANAGER_SOURCE;
   
   // Tabs: 'all', 'new', 'favorites', or sectionId
   const [activeTab, setActiveTab] = useState<string>('all');
@@ -453,6 +605,7 @@ const PromptDrawer: React.FC<PromptDrawerProps> = ({ visible, onClose, onCreateT
 
   const mainListRef = useRef<HTMLDivElement>(null);
   const contributorListRef = useRef<HTMLDivElement>(null);
+  const prevSourceRef = useRef<string | null>(null);
 
   // 投稿人筛选
   const [selectedContributor, setSelectedContributor] = useState<string | null>(null);
@@ -588,11 +741,42 @@ const PromptDrawer: React.FC<PromptDrawerProps> = ({ visible, onClose, onCreateT
     return () => window.cancelAnimationFrame(animationId);
   }, [selectedContributor, isMobile, syncContributorNameLayout]);
 
-  useEffect(() => {
-    if (visible && !data) {
-      fetchData();
+  const fetchData = useCallback(async () => {
+    setLoading(true);
+    try {
+      const response = await fetch(sourceUrl);
+      if (!response.ok) throw new Error('Network response was not ok');
+      const jsonData = await response.json();
+      const normalizedData = sourceUrl === PROMPT_MANAGER_SOURCE
+        ? normalizePromptManagerData(jsonData)
+        : jsonData;
+      setData(normalizedData);
+    } catch (error) {
+      message.error('获取数据失败，请检查链接是否正确');
+      console.error('Fetch error:', error);
+    } finally {
+      setLoading(false);
     }
-  }, [visible]);
+  }, [sourceUrl]);
+
+  useEffect(() => {
+    if (!visible || !sourceUrl) return;
+    if (prevSourceRef.current === sourceUrl) return;
+    prevSourceRef.current = sourceUrl;
+    if (!isBuiltInSource) return;
+    setActiveTab('all');
+    setSelectedTags([]);
+    setSearchText('');
+    setSelectedContributor(null);
+    setContributorActiveSection('all');
+    setContributorSelectedTags([]);
+    fetchData();
+  }, [visible, sourceUrl, isBuiltInSource, fetchData]);
+
+  useEffect(() => {
+    if (!visible || !sourceUrl || isBuiltInSource || data) return;
+    fetchData();
+  }, [visible, sourceUrl, isBuiltInSource, data, fetchData]);
 
   useEffect(() => {
     safeStorageSet(STORAGE_KEY_FAVORITES, JSON.stringify(favorites));
@@ -635,32 +819,10 @@ const PromptDrawer: React.FC<PromptDrawerProps> = ({ visible, onClose, onCreateT
     return () => container.removeEventListener('scroll', handleScroll);
   }, [loading, data, currentPage, activeTab]);
 
-  const fetchData = async () => {
-    setLoading(true);
-    try {
-      const response = await fetch(sourceUrl);
-      if (!response.ok) throw new Error('Network response was not ok');
-      const jsonData = await response.json();
-      setData(jsonData);
-    } catch (error) {
-      message.error('获取数据失败，请检查链接是否正确');
-      console.error('Fetch error:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const isNewItem = (id: string) => {
-    if (!id) return false;
-    let timestamp: number | null = null;
-    
-    if (/^\d{13}$/.test(id)) {
-      timestamp = parseInt(id, 10);
-    } else if (id.startsWith('imported-') || id.startsWith('u-')) {
-      const part = id.split('-')[1];
-      if (/^\d{13}$/.test(part)) timestamp = parseInt(part, 10);
-    }
-    
+  const isNewItem = (id: string, createdAt?: number) => {
+    const timestamp = typeof createdAt === 'number' && !Number.isNaN(createdAt)
+      ? createdAt
+      : parsePromptTimestamp(id);
     return timestamp ? Date.now() - timestamp <= NEW_WINDOW_MS : false;
   };
 
@@ -672,7 +834,8 @@ const PromptDrawer: React.FC<PromptDrawerProps> = ({ visible, onClose, onCreateT
   };
 
   const isNSFW = (prompt: ExtendedPromptItem) => {
-    return prompt.tags?.some(tag => ['r18', 'nsfw', '猎奇', 'guro'].includes(tag.toLowerCase())) ?? false;
+    if (hasNsfwKeyword(prompt.sectionTitle)) return true;
+    return prompt.tags?.some(tag => hasNsfwKeyword(tag)) ?? false;
   };
 
   const toggleReveal = (e: React.MouseEvent, id: string) => {
@@ -735,7 +898,7 @@ const PromptDrawer: React.FC<PromptDrawerProps> = ({ visible, onClose, onCreateT
   }, [data]);
 
   const newPrompts = useMemo(() => {
-    return allPrompts.filter(p => isNewItem(p.id));
+    return allPrompts.filter(p => isNewItem(p.id, p.createdAt));
   }, [allPrompts]);
 
   const filteredPrompts = useMemo(() => {
@@ -745,7 +908,7 @@ const PromptDrawer: React.FC<PromptDrawerProps> = ({ visible, onClose, onCreateT
     if (activeTab === 'favorites') {
       result = result.filter(p => favorites.includes(p.id));
     } else if (activeTab === 'new') {
-      result = result.filter(p => isNewItem(p.id));
+      result = result.filter(p => isNewItem(p.id, p.createdAt));
     } else if (activeTab !== 'all') {
       result = result.filter(p => p.sectionId === activeTab);
     }
@@ -771,8 +934,8 @@ const PromptDrawer: React.FC<PromptDrawerProps> = ({ visible, onClose, onCreateT
     return result
       .map((prompt, index) => ({ prompt, index }))
       .sort((a, b) => {
-        const aNew = isNewItem(a.prompt.id);
-        const bNew = isNewItem(b.prompt.id);
+        const aNew = isNewItem(a.prompt.id, a.prompt.createdAt);
+        const bNew = isNewItem(b.prompt.id, b.prompt.createdAt);
         if (aNew !== bNew) return aNew ? -1 : 1;
         return a.index - b.index;
       })
@@ -791,7 +954,7 @@ const PromptDrawer: React.FC<PromptDrawerProps> = ({ visible, onClose, onCreateT
     if (activeTab === 'favorites') {
       contextPrompts = contextPrompts.filter(p => favorites.includes(p.id));
     } else if (activeTab === 'new') {
-      contextPrompts = contextPrompts.filter(p => isNewItem(p.id));
+      contextPrompts = contextPrompts.filter(p => isNewItem(p.id, p.createdAt));
     } else if (activeTab !== 'all') {
       contextPrompts = contextPrompts.filter(p => p.sectionId === activeTab);
     }
@@ -863,17 +1026,26 @@ const PromptDrawer: React.FC<PromptDrawerProps> = ({ visible, onClose, onCreateT
       return {
         content: previewPrompt.content,
         contributor: previewPrompt.contributor,
-        images: previewPrompt.images || []
+        notes: previewPrompt.notes,
+        images: previewPrompt.images || [],
+        refs: previewPrompt.refs || []
       };
     } else {
       const variant = previewPrompt.similar?.[activeVariantIndex - 1];
       return {
         content: variant?.content || '',
         contributor: variant?.contributor,
-        images: variant?.images?.length ? variant.images : (previewPrompt.images || [])
+        notes: variant?.notes,
+        images: variant?.images?.length ? variant.images : (previewPrompt.images || []),
+        refs: previewPrompt.refs || []
       };
     }
   }, [previewPrompt, activeVariantIndex]);
+
+  const previewTimeLabel = useMemo(() => {
+    if (!previewPrompt) return '';
+    return formatPromptTime(previewPrompt.id, previewPrompt.createdAt);
+  }, [previewPrompt]);
 
   // Layout Detection
   useEffect(() => {
@@ -934,60 +1106,62 @@ const PromptDrawer: React.FC<PromptDrawerProps> = ({ visible, onClose, onCreateT
       borderRight: isMobile ? 'none' : `1px solid ${COLORS.accent}`
     }}>
       {/* Section Filter */}
-      <div>
-        <Title level={5} style={{ color: COLORS.text, marginBottom: 12, fontSize: 14, paddingLeft: 8 }}>
-          <AppstoreFilled style={{ marginRight: 8 }} /> 分类筛选
-        </Title>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          <Button
-            type={contributorActiveSection === 'all' ? 'primary' : 'text'}
-            block
-            onClick={() => {
-              setContributorActiveSection('all');
-              if (isMobile) setContributorMobileFilterVisible(false);
-            }}
-            style={{ 
-              textAlign: 'left', 
-              justifyContent: 'space-between',
-              height: 40,
-              borderRadius: 12,
-              background: contributorActiveSection === 'all' ? COLORS.primary : 'transparent',
-              color: contributorActiveSection === 'all' ? '#fff' : COLORS.text,
-              fontWeight: contributorActiveSection === 'all' ? 700 : 400
-            }}
-          >
-            <div style={{ display: 'flex', alignItems: 'center' }}>
-              <CompassFilled style={{ color: contributorActiveSection === 'all' ? '#fff' : '#FF9EB5' }} />
-              <span style={{ marginLeft: 8 }}>全部</span>
-            </div>
-            <Badge count={contributorPrompts.length} style={{ backgroundColor: COLORS.gold }} />
-          </Button>
-
-          <div style={{ height: 1, background: COLORS.secondary, margin: '8px 0', opacity: 0.5 }}></div>
-
-          {contributorSections.map(section => (
+      {!isPromptManagerSource && contributorSections.length > 1 && (
+        <div>
+          <Title level={5} style={{ color: COLORS.text, marginBottom: 12, fontSize: 14, paddingLeft: 8 }}>
+            <AppstoreFilled style={{ marginRight: 8 }} /> 分类筛选
+          </Title>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             <Button
-              key={section.id}
-              type={contributorActiveSection === section.id ? 'primary' : 'text'}
+              type={contributorActiveSection === 'all' ? 'primary' : 'text'}
               block
               onClick={() => {
-                setContributorActiveSection(section.id);
+                setContributorActiveSection('all');
                 if (isMobile) setContributorMobileFilterVisible(false);
               }}
               style={{ 
                 textAlign: 'left', 
-                justifyContent: 'flex-start',
+                justifyContent: 'space-between',
+                height: 40,
                 borderRadius: 12,
-                background: contributorActiveSection === section.id ? COLORS.secondary : 'transparent',
-                color: contributorActiveSection === section.id ? COLORS.text : COLORS.textLight,
-                fontWeight: contributorActiveSection === section.id ? 700 : 400
+                background: contributorActiveSection === 'all' ? COLORS.primary : 'transparent',
+                color: contributorActiveSection === 'all' ? '#fff' : COLORS.text,
+                fontWeight: contributorActiveSection === 'all' ? 700 : 400
               }}
             >
-              {section.title}
+              <div style={{ display: 'flex', alignItems: 'center' }}>
+                <CompassFilled style={{ color: contributorActiveSection === 'all' ? '#fff' : '#FF9EB5' }} />
+                <span style={{ marginLeft: 8 }}>全部</span>
+              </div>
+              <Badge count={contributorPrompts.length} overflowCount={99999} style={{ backgroundColor: COLORS.gold }} />
             </Button>
-          ))}
+
+            <div style={{ height: 1, background: COLORS.secondary, margin: '8px 0', opacity: 0.5 }}></div>
+
+            {contributorSections.map(section => (
+              <Button
+                key={section.id}
+                type={contributorActiveSection === section.id ? 'primary' : 'text'}
+                block
+                onClick={() => {
+                  setContributorActiveSection(section.id);
+                  if (isMobile) setContributorMobileFilterVisible(false);
+                }}
+                style={{ 
+                  textAlign: 'left', 
+                  justifyContent: 'flex-start',
+                  borderRadius: 12,
+                  background: contributorActiveSection === section.id ? COLORS.secondary : 'transparent',
+                  color: contributorActiveSection === section.id ? COLORS.text : COLORS.textLight,
+                  fontWeight: contributorActiveSection === section.id ? 700 : 400
+                }}
+              >
+                {section.title}
+              </Button>
+            ))}
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Tags Filter */}
       {contributorTags.length > 0 && (
@@ -1065,12 +1239,17 @@ const PromptDrawer: React.FC<PromptDrawerProps> = ({ visible, onClose, onCreateT
         </Title>}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           {[
-            { id: 'all', label: '全部', color: '#FF9EB5', icon: CompassFilled },
+            { id: 'all', label: '全部', color: '#FF9EB5', icon: CompassFilled, badge: allPrompts.length },
             { id: 'new', label: '最新', color: COLORS.new, icon: FireFilled, badge: newPrompts.length },
             { id: 'favorites', label: '我的收藏', color: COLORS.gold, icon: StarFilled, badge: favorites.length }
           ].map(item => {
             const isActive = activeTab === item.id;
             const IconComponent = item.icon;
+            let badgeColor: string = COLORS.primary;
+            if (item.id === 'all') badgeColor = COLORS.gold;
+            if (item.id === 'new') badgeColor = COLORS.new;
+            if (item.id === 'favorites') badgeColor = COLORS.gold;
+
             return (
               <Button 
                 key={item.id}
@@ -1094,34 +1273,45 @@ const PromptDrawer: React.FC<PromptDrawerProps> = ({ visible, onClose, onCreateT
                   <IconComponent style={{ color: isActive ? '#fff' : item.color }} />
                   <span style={{ marginLeft: 8 }}>{item.label}</span>
                 </div>
-                {item.badge ? <Badge count={item.badge} style={{ backgroundColor: item.id === 'new' ? COLORS.new : COLORS.gold }} /> : null}
+                {item.badge !== undefined ? <Badge count={item.badge} overflowCount={99999} style={{ backgroundColor: badgeColor }} /> : null}
               </Button>
             );
           })}
           
-          <div style={{ height: 1, background: COLORS.secondary, margin: '8px 0', opacity: 0.5 }}></div>
-
-          {data?.sections.map(section => (
-            <Button 
-              key={section.id}
-              type={activeTab === section.id ? 'primary' : 'text'}
-              block
-              style={{ 
-                textAlign: 'left', 
-                justifyContent: 'flex-start',
-                borderRadius: 12,
-                background: activeTab === section.id ? COLORS.secondary : 'transparent',
-                color: activeTab === section.id ? COLORS.text : COLORS.textLight,
-                fontWeight: activeTab === section.id ? 700 : 400
-              }}
-              onClick={() => {
-                setActiveTab(section.id);
-                if (isMobile) setMobileFilterVisible(false);
-              }}
-            >
-              {section.title}
-            </Button>
-          ))}
+          {!isPromptManagerSource && data?.sections.length ? (
+            <>
+              <div style={{ height: 1, background: COLORS.secondary, margin: '8px 0', opacity: 0.5 }}></div>
+              {data.sections.map(section => (
+                <Button 
+                  key={section.id}
+                  type={activeTab === section.id ? 'primary' : 'text'}
+                  block
+                  style={{ 
+                    textAlign: 'left', 
+                    justifyContent: 'space-between',
+                    borderRadius: 12,
+                    background: activeTab === section.id ? COLORS.secondary : 'transparent',
+                    color: activeTab === section.id ? COLORS.text : COLORS.textLight,
+                    fontWeight: activeTab === section.id ? 700 : 400
+                  }}
+                  onClick={() => {
+                    setActiveTab(section.id);
+                    if (isMobile) setMobileFilterVisible(false);
+                  }}
+                >
+                  <span>{section.title}</span>
+                  <Badge 
+                    count={section.prompts.length} 
+                    overflowCount={99999} 
+                    style={{ 
+                      backgroundColor: activeTab === section.id ? COLORS.primary : '#F0F0F0',
+                      color: activeTab === section.id ? '#fff' : COLORS.textLight
+                    }} 
+                  />
+                </Button>
+              ))}
+            </>
+          ) : null}
         </div>
       </div>
 
@@ -1250,7 +1440,7 @@ const PromptDrawer: React.FC<PromptDrawerProps> = ({ visible, onClose, onCreateT
                   )}
                   <Select
                     style={{ width: 180 }}
-                    value={sourceUrl === DEFAULT_DATA_SOURCE ? DEFAULT_DATA_SOURCE : 'custom'}
+                    value={isBuiltInSource ? sourceUrl : 'custom'}
                     onChange={(value) => {
                       if (value === 'custom') {
                         setSourceUrl('');
@@ -1259,7 +1449,7 @@ const PromptDrawer: React.FC<PromptDrawerProps> = ({ visible, onClose, onCreateT
                       }
                     }}
                     options={[
-                      { label: 'nanobanana-website', value: DEFAULT_DATA_SOURCE },
+                      ...BUILTIN_SOURCES,
                       { label: '自定义源', value: 'custom' }
                     ]}
                   />
@@ -1338,12 +1528,14 @@ const PromptDrawer: React.FC<PromptDrawerProps> = ({ visible, onClose, onCreateT
                       prompt={prompt}
                       favorites={favorites}
                       revealedImages={revealedImages}
-                      isNew={isNewItem(prompt.id)}
+                      isNew={isNewItem(prompt.id, prompt.createdAt)}
                       isNSFW={isNSFW}
                       onToggleFavorite={toggleFavorite}
                       onToggleReveal={toggleReveal}
                       onClick={openPreview}
                       onContributorClick={handleContributorClick}
+                      showSectionTag={!isPromptManagerSource}
+                      timeLabel={formatPromptTime(prompt.id, prompt.createdAt)}
                     />
                   ))}
                 </div>
@@ -1531,7 +1723,7 @@ const PromptDrawer: React.FC<PromptDrawerProps> = ({ visible, onClose, onCreateT
                         </div>
                         <div style={{ display: 'flex', alignItems: 'center', color: COLORS.textLight }}>
                           <FireFilled style={{ marginRight: 6, color: COLORS.new }} />
-                          <span style={{ fontWeight: 600, fontSize: 16 }}>{contributorPrompts.reduce((acc, cur) => acc + (isNewItem(cur.id) ? 1 : 0), 0)}</span>
+                          <span style={{ fontWeight: 600, fontSize: 16 }}>{contributorPrompts.reduce((acc, cur) => acc + (isNewItem(cur.id, cur.createdAt) ? 1 : 0), 0)}</span>
                           <span style={{ fontSize: 14, marginLeft: 4 }}>近期更新</span>
                         </div>
                       </Space>
@@ -1583,12 +1775,14 @@ const PromptDrawer: React.FC<PromptDrawerProps> = ({ visible, onClose, onCreateT
                             prompt={prompt}
                             favorites={favorites}
                             revealedImages={revealedImages}
-                            isNew={isNewItem(prompt.id)}
+                            isNew={isNewItem(prompt.id, prompt.createdAt)}
                             isNSFW={isNSFW}
                             onToggleFavorite={toggleFavorite}
                             onToggleReveal={toggleReveal}
                             onClick={openPreview}
                             onContributorClick={() => {}} // No-op in profile
+                            showSectionTag={!isPromptManagerSource}
+                            timeLabel={formatPromptTime(prompt.id, prompt.createdAt)}
                           />
                         ))}
                       </div>
@@ -1672,6 +1866,7 @@ const PromptDrawer: React.FC<PromptDrawerProps> = ({ visible, onClose, onCreateT
               flex: (isMobile || imageAspectRatio === 'landscape') ? '0 0 auto' : '1.5',
               background: '#000',
               display: 'flex', 
+              flexDirection: 'column',
               alignItems: 'center', 
               justifyContent: 'center',
               position: 'relative',
@@ -1681,7 +1876,7 @@ const PromptDrawer: React.FC<PromptDrawerProps> = ({ visible, onClose, onCreateT
             }}>
               {currentPreviewData.images.length > 0 ? (
                 <>
-                  <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <div style={{ width: '100%', flex: 1, minHeight: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative' }}>
                     <Image
                       src={currentPreviewData.images[previewImageIndex]}
                       style={{ width: '100%', height: '100%', objectFit: 'contain' }}
@@ -1689,42 +1884,60 @@ const PromptDrawer: React.FC<PromptDrawerProps> = ({ visible, onClose, onCreateT
                       height="100%"
                       preview={isMobile ? { maskClassName: 'mobile-hidden-mask' } : undefined}
                     />
+                    {previewTimeLabel && (
+                      <div style={{ 
+                        position: 'absolute',
+                        left: 12,
+                        bottom: 12,
+                        background: 'rgba(0,0,0,0.55)',
+                        borderRadius: 10,
+                        padding: '2px 8px',
+                        color: '#fff',
+                        fontSize: 12,
+                        zIndex: 10
+                      }}>
+                        提交时间 {previewTimeLabel}
+                      </div>
+                    )}
                   </div>
                   {/* Image Navigation */}
                   {currentPreviewData.images.length > 1 && (
-                    <>
-                      <div 
-                        style={{ 
-                          position: 'absolute', left: 16, top: '50%', transform: 'translateY(-50%)',
-                          width: 40, height: 40, borderRadius: '50%',
-                          background: 'rgba(0,0,0,0.3)', backdropFilter: 'blur(4px)',
-                          display: 'flex', alignItems: 'center', justifyContent: 'center',
-                          cursor: 'pointer', zIndex: 10, color: '#fff'
-                        }}
-                        onClick={() => setPreviewImageIndex(prev => (prev - 1 + currentPreviewData.images.length) % currentPreviewData.images.length)}
-                      >
-                        <LeftOutlined style={{ fontSize: 20 }} />
-                      </div>
-                      <div 
-                        style={{ 
-                          position: 'absolute', right: 16, top: '50%', transform: 'translateY(-50%)',
-                          width: 40, height: 40, borderRadius: '50%',
-                          background: 'rgba(0,0,0,0.3)', backdropFilter: 'blur(4px)',
-                          display: 'flex', alignItems: 'center', justifyContent: 'center',
-                          cursor: 'pointer', zIndex: 10, color: '#fff'
-                        }}
-                        onClick={() => setPreviewImageIndex(prev => (prev + 1) % currentPreviewData.images.length)}
-                      >
-                        <RightOutlined style={{ fontSize: 20 }} />
-                      </div>
+                    <div style={{ width: '100%', display: 'flex', justifyContent: 'center', padding: '12px 0 16px' }}>
                       <div style={{ 
-                        position: 'absolute', bottom: 16, left: '50%', transform: 'translateX(-50%)',
-                        background: 'rgba(0,0,0,0.5)', borderRadius: 12, padding: '2px 8px', color: '#fff', fontSize: 12,
-                        zIndex: 10
+                        display: 'flex', 
+                        alignItems: 'center', 
+                        gap: 12, 
+                        background: 'rgba(0,0,0,0.35)', 
+                        borderRadius: 18, 
+                        padding: '6px 12px'
                       }}>
-                        {previewImageIndex + 1} / {currentPreviewData.images.length}
+                        <div 
+                          style={{ 
+                            width: 32, height: 32, borderRadius: '50%',
+                            background: 'rgba(255,255,255,0.12)',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            cursor: 'pointer', color: '#fff'
+                          }}
+                          onClick={() => setPreviewImageIndex(prev => (prev - 1 + currentPreviewData.images.length) % currentPreviewData.images.length)}
+                        >
+                          <LeftOutlined style={{ fontSize: 16 }} />
+                        </div>
+                        <div style={{ color: '#fff', fontSize: 12, minWidth: 52, textAlign: 'center' }}>
+                          {previewImageIndex + 1} / {currentPreviewData.images.length}
+                        </div>
+                        <div 
+                          style={{ 
+                            width: 32, height: 32, borderRadius: '50%',
+                            background: 'rgba(255,255,255,0.12)',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            cursor: 'pointer', color: '#fff'
+                          }}
+                          onClick={() => setPreviewImageIndex(prev => (prev + 1) % currentPreviewData.images.length)}
+                        >
+                          <RightOutlined style={{ fontSize: 16 }} />
+                        </div>
                       </div>
-                    </>
+                    </div>
                   )}
                 </>
               ) : (
@@ -1744,9 +1957,11 @@ const PromptDrawer: React.FC<PromptDrawerProps> = ({ visible, onClose, onCreateT
               {/* Header */}
               <div style={{ marginBottom: 20 }}>
                 <Space style={{ marginBottom: 8 }} wrap>
-                  <Tag color="volcano" style={{ borderRadius: 8 }}>{previewPrompt.sectionTitle}</Tag>
+                  {!isPromptManagerSource && (
+                    <Tag color="volcano" style={{ borderRadius: 8 }}>{previewPrompt.sectionTitle}</Tag>
+                  )}
                   {favorites.includes(previewPrompt.id) && <Tag color="gold" icon={<StarFilled />} style={{ borderRadius: 8 }}>已收藏</Tag>}
-                  {isNewItem(previewPrompt.id) && <Tag color={COLORS.new} style={{ borderRadius: 8 }}>NEW</Tag>}
+                  {isNewItem(previewPrompt.id, previewPrompt.createdAt) && <Tag color={COLORS.new} style={{ borderRadius: 8 }}>NEW</Tag>}
                 </Space>
                 <Title level={isMobile ? 4 : 3} style={{ margin: 0, color: COLORS.text }}>{previewPrompt.title}</Title>
                 <Space style={{ marginTop: 8 }}>
@@ -1785,6 +2000,63 @@ const PromptDrawer: React.FC<PromptDrawerProps> = ({ visible, onClose, onCreateT
 
               {/* Content Box */}
               <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 16 }}>
+                {currentPreviewData.notes && (
+                  <div style={{ 
+                    background: '#FFFBE6', 
+                    border: '1px solid #FFE58F',
+                    borderRadius: 12,
+                    padding: '12px 16px'
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>
+                      <InfoCircleFilled style={{ color: '#FAAD14', fontSize: 16 }} />
+                      <div style={{ fontWeight: 600, color: '#D48806', fontSize: 13 }}>投稿者备注</div>
+                    </div>
+                    <Text style={{ color: '#D46B08', fontSize: 13, lineHeight: 1.5, display: 'block' }}>{currentPreviewData.notes}</Text>
+                  </div>
+                )}
+
+                {currentPreviewData.refs && currentPreviewData.refs.length > 0 && (
+                  <div style={{ 
+                    background: '#fff', 
+                    borderRadius: 16,
+                    border: `1px solid ${COLORS.accent}`,
+                    padding: '10px 12px',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: 8
+                  }}>
+                    <Text type="secondary" style={{ fontSize: 12, display: 'inline-flex', alignItems: 'center', gap: 6, color: COLORS.textLight }}>
+                      <FileTextOutlined /> 参考图
+                    </Text>
+                    <Image.PreviewGroup>
+                      <div style={{ display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 4 }}>
+                        {currentPreviewData.refs.map((src, index) => (
+                          <div
+                            key={`${src}-${index}`}
+                            style={{
+                              width: 64,
+                              height: 64,
+                              borderRadius: 12,
+                              overflow: 'hidden',
+                              border: `1px solid ${COLORS.accent}`,
+                              flex: '0 0 auto',
+                              background: '#fff'
+                            }}
+                          >
+                            <Image
+                              src={src}
+                              width="100%"
+                              height="100%"
+                              style={{ objectFit: 'cover', display: 'block' }}
+                              preview={isMobile ? { maskClassName: 'mobile-hidden-mask' } : undefined}
+                            />
+                          </div>
+                        ))}
+                      </div>
+                    </Image.PreviewGroup>
+                  </div>
+                )}
+
                 <div style={{ 
                   background: '#fff', 
                   borderRadius: 16, 
