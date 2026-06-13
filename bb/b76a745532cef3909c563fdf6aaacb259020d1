@@ -1,0 +1,33 @@
+platforms/wechat-miniprogram/pages/index/index.js
+  s_124f97231d3aa4::t_5438f55a2034dd 2,8-9,114-117,280-372,394
+  s_5a1db90f202aef::t_1f57c4da80d017 142-143
+  s_5a1db90f202aef::t_30a223f3116539 378-387
+  s_5a1db90f202aef::t_a1a9c73d0cd546 140
+  s_5a1db90f202aef::t_b42b8d37a4d943 124
+  s_5a1db90f202aef::t_d31cd761efda32 3-4
+  s_5a1db90f202aef::t_e62dfb4da576e6 89-94
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.6",
+  "base_commit_sha": "bbb76a745532cef3909c563fdf6aaacb259020d1",
+  "prompts": {},
+  "sessions": {
+    "s_124f97231d3aa4": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019eaa60-e1d3-7470-b3b2-03e7cd24235c",
+        "model": "gpt-5.5"
+      },
+      "human_author": "xiaofei <1980028437@qq.com>"
+    },
+    "s_5a1db90f202aef": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bb61149b-e778-4c84-8db3-d37a7194d81b",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "xiaofei <1980028437@qq.com>"
+    }
+  }
+}
