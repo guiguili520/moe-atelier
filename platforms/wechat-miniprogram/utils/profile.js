@@ -16,6 +16,7 @@ const loadProfile = () => {
 const persistAvatar = (avatarUrl) => {
   if (!avatarUrl) return '';
   if (String(avatarUrl).startsWith(userDir())) return avatarUrl;
+  if (/^https?:\/\//.test(String(avatarUrl))) return avatarUrl; // 远程头像（如微信返回）直接存 URL
   const old = wx.getStorageSync(PROFILE_KEY);
   const oldAvatar = (old && old.avatar) || '';
   const ext = (String(avatarUrl).match(/\.([a-z0-9]+)$/i) || [null, 'png'])[1];

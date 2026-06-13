@@ -14,9 +14,6 @@ Page({
     profile: null,
     stats: { totalGenerated: 0, favorites: 0, history7d: 0 },
     history: [],
-    editing: false,
-    draftAvatar: '',
-    draftNickname: '',
     joinDays: 0
   },
 
@@ -32,37 +29,18 @@ Page({
     this.setData({ profile, history, stats, joinDays });
   },
 
-  startEdit() {
-    const profile = loadProfile();
-    this.setData({
-      editing: true,
-      draftAvatar: profile ? profile.avatar : '',
-      draftNickname: profile ? profile.nickname : ''
+  // 一键登录：弹窗确认后直接赋值（微信新策略下多为默认头像/昵称）。
+  login() {
+    wx.getUserProfile({
+      desc: '用于展示你的头像和昵称',
+      success: (res) => {
+        const info = res.userInfo || {};
+        saveProfile({ avatar: info.avatarUrl || '', nickname: info.nickName || '微信用户' });
+        this.refresh();
+        wx.showToast({ title: '已登录' });
+      },
+      fail: () => {}
     });
-  },
-
-  cancelEdit() {
-    this.setData({ editing: false });
-  },
-
-  onChooseAvatar(event) {
-    this.setData({ draftAvatar: event.detail.avatarUrl });
-  },
-
-  onNicknameInput(event) {
-    this.setData({ draftNickname: event.detail.value });
-  },
-
-  saveEdit() {
-    const nickname = String(this.data.draftNickname || '').trim();
-    if (!nickname) {
-      wx.showToast({ title: '请填写昵称', icon: 'none' });
-      return;
-    }
-    saveProfile({ avatar: this.data.draftAvatar, nickname });
-    this.setData({ editing: false });
-    this.refresh();
-    wx.showToast({ title: '已保存' });
   },
 
   logout() {

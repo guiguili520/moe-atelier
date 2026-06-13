@@ -6,34 +6,15 @@
         <view class="nickname">{{profile.nickname}}</view>
         <view class="join">已陪伴你 {{joinDays}} 天</view>
       </view>
-      <view class="edit-btn" catchtap="startEdit">编辑</view>
     </block>
     <block wx:else>
       <view class="avatar-img placeholder">游</view>
       <view class="profile-meta">
         <view class="nickname">未登录</view>
-        <view class="join">登录后可保存头像与昵称</view>
+        <view class="join">登录后保存你的头像与昵称</view>
       </view>
-      <view class="edit-btn primary" catchtap="startEdit">登录</view>
+      <view class="edit-btn primary" catchtap="login">登录</view>
     </block>
-  </view>
-
-  <view wx:if="{{editing}}" class="edit-panel">
-    <view class="edit-row">
-      <text class="edit-label">头像</text>
-      <button class="avatar-picker" open-type="chooseAvatar" bindchooseavatar="onChooseAvatar">
-        <image wx:if="{{draftAvatar}}" class="avatar-preview" src="{{draftAvatar}}" mode="aspectFill"></image>
-        <text wx:else class="avatar-preview-tip">选择头像</text>
-      </button>
-    </view>
-    <view class="edit-row">
-      <text class="edit-label">昵称</text>
-      <input class="nickname-input" type="nickname" value="{{draftNickname}}" placeholder="点击填写昵称" bindinput="onNicknameInput" bindblur="onNicknameInput" />
-    </view>
-    <view class="edit-actions">
-      <view class="edit-cancel" catchtap="cancelEdit">取消</view>
-      <view class="edit-save" catchtap="saveEdit">保存</view>
-    </view>
   </view>
 
   <view class="stats-card">
@@ -72,8 +53,7 @@
       <text>生成配置</text>
       <text class="menu-arrow">›</text>
     </view>
-    <view wx:if="{{profile}}" class="menu-item danger" catchtap="logout">
-      <text>退出登录</text>
-    </view>
   </view>
+
+  <view wx:if="{{profile}}" class="logout-btn" catchtap="logout">退出登录</view>
 </view>
