@@ -8,6 +8,15 @@ const PAGE_SIZE = 20;
 const CUSTOM_GENERATE_ID = 'custom';
 const GENERATE_TIMEOUT = 600000;
 
+const GEN_TIPS = [
+  '主人别急嘛，本小姐这就画好',
+  '哼，画得这么认真，等下要夸我哦',
+  '先喝杯茶，人家马上变给你看～',
+  '笔尖在施魔法，不许偷看啦',
+  '再等一下下，乖乖等我哦～',
+  '马上就好，才不是为了你呢～'
+];
+
 const normalizeBaseUrl = (value) => String(value || '').replace(/\/+$/, '');
 
 const resolveGenerateUrl = (config) => {
@@ -115,7 +124,10 @@ Page({
     customPrompt: '',
     generatingId: '',
     isGenerating: false,
-    resultImages: []
+    resultImages: [],
+    genVisible: false,
+    genPercent: 0,
+    genTip: ''
   },
 
   onLoad() {
@@ -145,6 +157,15 @@ Page({
     } else {
       this.applyFilters();
     }
+  },
+
+  onHide() {
+    if (this.genTimer) { clearInterval(this.genTimer); this.genTimer = null; }
+    wx.showTabBar({ fail: () => {} });
+  },
+
+  onUnload() {
+    if (this.genTimer) { clearInterval(this.genTimer); this.genTimer = null; }
   },
 
   fetchPrompts() {
@@ -338,6 +359,42 @@ Page({
     });
   },
 
+  startGenOverlay() {
+    wx.hideTabBar({ fail: () => {} });
+    this.setData({ genVisible: true, genPercent: 4, genTip: GEN_TIPS[0] });
+    let tick = 0;
+    this.genTimer = setInterval(() => {
+      tick += 1;
+      const p = this.data.genPercent;
+      const next = p < 95 ? p + Math.max(1, Math.round((95 - p) * 0.12)) : p;
+      const patch = { genPercent: Math.min(95, next) };
+      if (tick % 5 === 0) {
+        let t = this.data.genTip;
+        while (t === this.data.genTip) t = GEN_TIPS[Math.floor(Math.random() * GEN_TIPS.length)];
+        patch.genTip = t;
+      }
+      this.setData(patch);
+    }, 500);
+  },
+
+  stopGenOverlay() {
+    if (this.genTimer) { clearInterval(this.genTimer); this.genTimer = null; }
+    this.setData({ genVisible: false, genPercent: 0 });
+    wx.showTabBar({ fail: () => {} });
+  },
+
+  finishGenAndGo() {
+    if (this.genTimer) { clearInterval(this.genTimer); this.genTimer = null; }
+    this.setData({ genPercent: 100 });
+    setTimeout(() => {
+      this.setData({ genVisible: false, genPercent: 0, previewVisible: false });
+      wx.showTabBar({ fail: () => {} });
+      wx.navigateTo({ url: '/pages/result/result' });
+    }, 320);
+  },
+
+  noop() {},
+
   startGenerate({ id, title, promptText }) {
     if (this.data.isGenerating) {
       wx.showToast({ title: '上一张还在生成中', icon: 'none' });
@@ -353,6 +410,7 @@ Page({
     const headers = { 'content-type': 'application/json' };
     if (config.apiFormat === 'openai') headers.Authorization = `Bearer ${config.apiKey}`;
     this.setData({ generatingId: id, isGenerating: true });
+    this.startGenOverlay();
     wx.request({
       url: resolveGenerateUrl(config),
       method: 'POST',
@@ -362,6 +420,7 @@ Page({
       success: (res) => {
         if (res.statusCode < 200 || res.statusCode >= 300) {
           const message = res.data?.error?.message || res.data?.message || `请求失败：${res.statusCode}`;
+          this.stopGenOverlay();
           wx.showToast({ title: message, icon: 'none' });
           return;
         }
@@ -372,6 +431,7 @@ Page({
           prompt: promptText
         }));
         if (!images.length) {
+          this.stopGenOverlay();
           wx.showToast({ title: '没有解析到图片', icon: 'none' });
           return;
         }
@@ -382,16 +442,22 @@ Page({
           promptId: id,
           apiFormat: config.apiFormat
         }))).then((saved) => {
-          if (saved.some(Boolean)) incrementGenerated(saved.filter(Boolean).length);
+          const ok = saved.filter(Boolean);
+          if (ok.length) incrementGenerated(ok.length);
           this.setData({ resultImages: mapHistoryToResults() });
+          getApp().globalData.resultImages = ok.length
+            ? ok.map((e) => ({ filePath: e.filePath, title: e.title }))
+            : images.map((im) => ({ filePath: im.src, title: im.title }));
+          this.finishGenAndGo();
         });
-        wx.showToast({ title: '生成完成' });
       },
       fail: (err) => {
+        this.stopGenOverlay();
         wx.showToast({ title: err.errMsg || '请求失败', icon: 'none' });
       },
       complete: () => {
         this.setData({ generatingId: '', isGenerating: false });
+        if (this.genTimer) { clearInterval(this.genTimer); this.genTimer = null; }
       }
     });
   },

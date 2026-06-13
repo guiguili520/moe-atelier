@@ -1,0 +1,142 @@
+<!--
+此文件为开发者工具生成，生成时间: 2026/6/13 18:05:48
+使用方法：
+在 /Users/mac/Documents/code/个人项目/moe-atelier/platforms/wechat-miniprogram/pages/index/index.wxml 引入模板
+
+```
+<import src="index.skeleton.wxml"/>
+<template is="skeleton" wx:if="{{loading}}" />
+```
+
+在 /Users/mac/Documents/code/个人项目/moe-atelier/platforms/wechat-miniprogram/pages/index/index.wxss 中引入样式
+```
+@import "./index.skeleton.wxss";
+```
+
+更多详细信息可以参考文档：https://developers.weixin.qq.com/miniprogram/dev/devtools/skeleton.html
+-->
+<template name="skeleton">
+  <view class="sk-container">
+    <view class="page sk-image">
+      <view class="topbar">
+        <view class="brand">
+          <view class="brand-mark sk-transparent sk-text-24-2424-395 sk-text" style="background-position-x: 50%;">♡</view>
+          <view>
+            <view class="brand-title sk-transparent sk-text-8-3333-825 sk-text">次元绘图</view>
+            <view class="brand-subtitle sk-transparent sk-text-14-2857-823 sk-text">提示词广场</view>
+          </view>
+        </view>
+        <view class="top-actions">
+          <view class="circle-btn">
+            <text class="circle-icon sk-transparent sk-text-26-4706-404 sk-text" style="background-position-x: 50%;">↻</text>
+          </view>
+          <view class="circle-btn">
+            <text class="circle-icon sk-transparent sk-text-26-4706-528 sk-text" style="background-position-x: 50%;">⚙︎</text>
+          </view>
+        </view>
+      </view>
+      <view class="search-panel">
+        <view class="search-box">
+          <text class="search-icon sk-transparent sk-text-14-2857-934 sk-text">⌕</text>
+          <view class="search-input sk-image" placeholder="搜索提示词、作者或标签..." value="true"></view>
+        </view>
+      </view>
+      <view class="custom-panel">
+        <view class="custom-head">
+          <view>
+            <view class="panel-kicker sk-transparent sk-text-14-2857-503 sk-text">自由创作</view>
+            <view class="panel-title sk-transparent sk-text-14-2857-434 sk-text">自定义生图</view>
+          </view>
+          <button class="custom-generate-btn sk-transparent sk-button sk-pseudo sk-pseudo-circle">
+            生成
+          </button>
+        </view>
+        <view class="custom-textarea sk-image" maxlength="-1" placeholder="输入你想生成的画面提示词..." value="true"></view>
+      </view>
+      <scroll-view enhanced="true" scroll-x="true" class="category-scroll">
+        <view class="category-list" style="scroll-snap-align: none;">
+          <view class="category-chip active" data-id="all">
+            <text class="sk-transparent sk-text-14-2857-731 sk-text">全部</text>
+            <text class="category-count sk-transparent sk-text-20-5882-589 sk-text" style="background-position-x: 50%;">379</text>
+          </view>
+          <view class="category-chip" data-id="favorites">
+            <text class="sk-transparent sk-text-14-2857-365 sk-text">收藏</text>
+            <text class="category-count sk-transparent sk-text-20-5882-735 sk-text" style="background-position-x: 50%;">0</text>
+          </view>
+        </view>
+      </scroll-view>
+      <view class="prompt-grid">
+        <view class="prompt-card" data-id="841">
+          <view class="image-wrap">
+            <image class="prompt-image sk-image" mode="aspectFill"></image>
+            <view class="image-badges">
+              <text class="date-badge sk-transparent sk-text-14-2857-206 sk-text">2026-04-29</text>
+            </view>
+            <text class="section-badge sk-transparent sk-text-14-2857-833 sk-text">精选</text>
+            <button class="favorite-btn sk-transparent sk-button sk-pseudo sk-pseudo-circle" data-id="841">
+              ☆
+            </button>
+          </view>
+          <view class="card-body">
+            <view class="card-title sk-transparent sk-text-15-0000-9 sk-text">MUV-LUV名场面替换</view>
+            <view class="tag-row">
+              <text class="tag sk-transparent sk-text-14-2857-610 sk-text">#MUV-LUV</text>
+            </view>
+            <view class="prompt-summary sk-transparent sk-text-17-6471-428 sk-text">将图一风格改为《MUV-LUV Alternative Total Eclipse》二次元画风。将图一左侧人物完全替换为图二人物（不戴帽子），保留图一背景、...</view>
+            <view class="card-footer">
+              <view class="author">
+                <view class="avatar sk-transparent sk-text-23-5294-276 sk-text" style="background-position-x: 50%;">人</view>
+                <text class="sk-transparent sk-opacity">匿名</text>
+              </view>
+              <button class="use-btn sk-transparent sk-button sk-pseudo sk-pseudo-circle" data-id="841">
+                使用
+              </button>
+            </view>
+          </view>
+        </view>
+        <view class="prompt-card right" data-id="839">
+          <view class="image-wrap">
+            <image class="prompt-image sk-image" mode="aspectFill"></image>
+            <view class="image-badges">
+              <text class="date-badge sk-transparent sk-text-14-2857-582 sk-text">2026-04-25</text>
+            </view>
+            <text class="section-badge sk-transparent sk-text-14-2857-183 sk-text">精选</text>
+            <button class="favorite-btn sk-transparent sk-button sk-pseudo sk-pseudo-circle" data-id="839">
+              ☆
+            </button>
+          </view>
+          <view class="card-body">
+            <view class="card-title sk-transparent sk-text-15-0000-152 sk-text">艺术画融合</view>
+            <view class="tag-row"></view>
+            <view class="prompt-summary sk-transparent sk-text-17-6471-803 sk-text">请根据我提供的参考图像和提示词模版，生成一段“可直接用于AI绘图”的最终成品提示词。 已知： - 图1为角色参考图 - 图2为艺术原画参考图。 任务目标：以...</view>
+            <view class="card-footer">
+              <view class="author">
+                <view class="avatar sk-transparent sk-text-23-5294-192 sk-text" style="background-position-x: 50%;">人</view>
+                <text class="sk-transparent sk-opacity">逐辰十七</text>
+              </view>
+              <button class="use-btn sk-transparent sk-button sk-pseudo sk-pseudo-circle" data-id="839">
+                使用
+              </button>
+            </view>
+          </view>
+        </view>
+        <view class="prompt-card" data-id="838">
+          <view class="image-wrap">
+            <image class="prompt-image sk-image" mode="aspectFill"></image>
+            <view class="image-badges">
+              <text class="date-badge sk-transparent sk-text-14-2857-101 sk-text">2026-04-21</text>
+            </view>
+          </view>
+        </view>
+        <view class="prompt-card right" data-id="837">
+          <view class="image-wrap">
+            <image class="prompt-image sk-image" mode="aspectFill"></image>
+            <view class="image-badges">
+              <text class="date-badge sk-transparent sk-text-14-2857-361 sk-text">2026-04-21</text>
+            </view>
+          </view>
+        </view>
+      </view>
+    </view>
+  </view>
+</template>

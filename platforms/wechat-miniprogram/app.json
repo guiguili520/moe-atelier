@@ -2,6 +2,7 @@
   "pages": [
     "pages/index/index",
     "pages/profile/profile",
+    "pages/result/result",
     "pages/config/config"
   ],
   "window": {

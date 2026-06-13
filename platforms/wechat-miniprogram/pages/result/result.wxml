@@ -1,0 +1,19 @@
+<view class="page">
+  <view class="topbar" style="padding-top: {{statusBar}}px;">
+    <view class="back-btn" catchtap="back"></view>
+  </view>
+
+  <block wx:if="{{images.length > 0}}">
+    <swiper wx:if="{{multi}}" class="stage" current="{{current}}" bindchange="onSwiperChange">
+      <block wx:for="{{images}}" wx:key="filePath">
+        <swiper-item>
+          <image class="full-img" src="{{item.filePath}}" mode="aspectFit" bindlongpress="onLongPress"></image>
+        </swiper-item>
+      </block>
+    </swiper>
+    <image wx:else class="full-img stage" src="{{images[0].filePath}}" mode="aspectFit" bindlongpress="onLongPress"></image>
+  </block>
+  <view wx:else class="empty">没有可显示的图片</view>
+
+  <view class="hint">长按图片可保存或分享{{multi ? ' · 左右滑动切换' : ''}}</view>
+</view>

@@ -2,7 +2,8 @@ const { pruneExpired } = require('./utils/history');
 
 App({
   globalData: {
-    appName: '次元绘图'
+    appName: '次元绘图',
+    resultImages: []
   },
 
   onLaunch() {
