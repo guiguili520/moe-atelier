@@ -1,0 +1,25 @@
+platforms/wechat-miniprogram/pages/profile/profile.wxss
+  s_5a1db90f202aef::t_f7085c1fa121f0 4-6,66-67,72,76,180,203-212
+platforms/wechat-miniprogram/utils/profile.js
+  s_5a1db90f202aef::t_b38626d195c7d3 19
+platforms/wechat-miniprogram/pages/profile/profile.wxml
+  s_5a1db90f202aef::t_9c11ae105f2aa5 14,16,57-58
+platforms/wechat-miniprogram/pages/profile/profile.js
+  s_5a1db90f202aef::t_ee6f0f96ad8851 32-42
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.6",
+  "base_commit_sha": "18de3a803c388fa126f9a123996904c98ef80946",
+  "prompts": {},
+  "sessions": {
+    "s_5a1db90f202aef": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bb61149b-e778-4c84-8db3-d37a7194d81b",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "xiaofei <1980028437@qq.com>"
+    }
+  }
+}
