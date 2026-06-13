@@ -225,8 +225,8 @@
 
 .history-cell {
   position: relative;
-  width: 218rpx;
-  height: 218rpx;
+  width: 214rpx;
+  height: 214rpx;
   margin: 0 9rpx 18rpx 0;
   border-radius: 18rpx;
   overflow: hidden;
