@@ -1,0 +1,172 @@
+<view class="page">
+  <view class="topbar">
+    <view class="brand">
+      <image class="brand-mark" src="/assets/logo.png" mode="aspectFill"></image>
+      <view>
+        <view class="brand-title">次元绘图</view>
+        <view class="brand-subtitle">提示词广场</view>
+      </view>
+    </view>
+    <view class="top-actions">
+      <view class="circle-btn" bindtap="fetchPrompts">
+        <view class="circle-icon icon-refresh"></view>
+      </view>
+      <view class="circle-btn" bindtap="goConfig">
+        <view class="circle-icon icon-gear"></view>
+      </view>
+    </view>
+  </view>
+
+  <view class="search-panel">
+    <view class="search-box">
+      <view class="search-icon"></view>
+      <input class="search-input" value="{{searchText}}" placeholder="搜索提示词、作者或标签..." bindinput="handleSearchInput" />
+      <view wx:if="{{searchText}}" class="search-clear" catchtap="clearSearch"></view>
+    </view>
+  </view>
+
+  <view class="custom-panel">
+    <view class="custom-head">
+      <view>
+        <view class="panel-kicker">自由创作</view>
+        <view class="panel-title">自定义生图</view>
+      </view>
+      <button class="custom-generate-btn" loading="{{generatingId === 'custom'}}" catchtap="generateCustomPrompt">
+        {{generatingId === 'custom' ? '生成中' : '生成'}}
+      </button>
+    </view>
+    <textarea
+      class="custom-textarea"
+      value="{{customPrompt}}"
+      maxlength="-1"
+      fixed="{{true}}"
+      show-confirm-bar="{{false}}"
+      cursor-spacing="24"
+      placeholder="输入你想生成的画面提示词..."
+      bindinput="handleCustomPromptInput"
+    />
+  </view>
+
+  <scroll-view class="category-scroll" scroll-x enhanced show-scrollbar="{{false}}">
+    <view class="category-list">
+      <block wx:for="{{categories}}" wx:key="id">
+        <view class="category-chip {{item.active ? 'active' : ''}}" data-id="{{item.id}}" bindtap="handleCategoryTap">
+          <text>{{item.label}}</text>
+          <text class="category-count">{{item.count}}</text>
+        </view>
+      </block>
+    </view>
+  </scroll-view>
+
+  <view wx:if="{{resultImages.length > 0}}" class="recent-panel">
+    <view class="panel-head">
+      <view>
+        <view class="panel-kicker">最近生成</view>
+        <view class="panel-title">你的作品</view>
+      </view>
+    </view>
+    <scroll-view class="recent-scroll" scroll-x enhanced show-scrollbar="{{false}}">
+      <view class="recent-list">
+        <block wx:for="{{resultImages}}" wx:key="id">
+          <image class="recent-image" mode="aspectFill" src="{{item.src}}" data-src="{{item.src}}" bindtap="previewImage" />
+        </block>
+      </view>
+    </scroll-view>
+  </view>
+
+  <view wx:if="{{promptError}}" class="error-card">
+    <view class="error-title">提示词加载失败</view>
+    <view class="error-text">{{promptError}}</view>
+    <button class="primary-small" bindtap="goConfig">检查配置</button>
+  </view>
+
+  <view wx:if="{{loadingPrompts}}" class="loading-card">少女祈祷中...</view>
+
+  <view wx:if="{{showEmpty}}" class="empty-card">
+    <view class="empty-title">没有找到相关提示词</view>
+    <view class="empty-text">换个关键词试试，或刷新提示词源。</view>
+  </view>
+
+  <view wx:if="{{showGrid}}" class="prompt-grid">
+    <block wx:for="{{visiblePrompts}}" wx:key="id">
+      <view class="prompt-card {{item.cardSide}}" data-id="{{item.id}}" bindtap="openPreview">
+        <view class="image-wrap">
+          <image wx:if="{{item.image}}" class="prompt-image" mode="aspectFill" src="{{item.image}}" />
+          <view wx:else class="image-placeholder">文</view>
+
+          <view class="image-badges">
+            <text wx:if="{{item.dateLabel}}" class="date-badge">{{item.dateLabel}}</text>
+            <text wx:if="{{item.isNew}}" class="new-badge">NEW</text>
+          </view>
+          <text wx:if="{{item.sectionTitle}}" class="section-badge">{{item.sectionTitle}}</text>
+          <view class="favorite-btn {{item.favorite ? 'active' : ''}}" data-id="{{item.id}}" catchtap="toggleFavorite"></view>
+        </view>
+
+        <view class="card-body">
+          <view class="card-title">{{item.title}}</view>
+          <view class="tag-row">
+            <block wx:for="{{item.displayTags}}" wx:for-item="tag" wx:key="*this">
+              <text class="tag">#{{tag}}</text>
+            </block>
+          </view>
+          <view class="prompt-summary">{{item.summary || '点击查看完整提示词'}}</view>
+          <view class="card-footer">
+            <view class="author">
+              <view class="avatar">人</view>
+              <text>{{item.contributor || '匿名'}}</text>
+            </view>
+            <view class="use-btn" data-id="{{item.id}}" catchtap="openPreview">
+              {{generatingId === item.id ? '生成中' : '使用'}}
+            </view>
+          </view>
+        </view>
+      </view>
+    </block>
+  </view>
+
+  <button wx:if="{{hasMore}}" class="load-more" bindtap="loadMore">加载更多</button>
+
+  <view wx:if="{{previewVisible && previewPrompt}}" class="preview-layer">
+    <view class="preview-mask" catchtap="closePreview"></view>
+    <view class="preview-sheet">
+      <view class="preview-handle"></view>
+      <scroll-view class="preview-scroll" scroll-y enhanced>
+        <image wx:if="{{previewPrompt.image}}" class="preview-image" mode="aspectFill" src="{{previewPrompt.image}}" data-src="{{previewPrompt.image}}" bindtap="previewImage" />
+        <view class="preview-content">
+          <view class="preview-meta">
+            <text wx:if="{{previewPrompt.sectionTitle}}" class="preview-tag">{{previewPrompt.sectionTitle}}</text>
+            <text wx:if="{{previewPrompt.favorite}}" class="preview-tag gold">已收藏</text>
+            <text wx:if="{{previewPrompt.isNew}}" class="preview-tag red">NEW</text>
+          </view>
+          <view class="preview-title">{{previewPrompt.title}}</view>
+          <view class="preview-author">{{previewPrompt.contributor || '匿名'}} · {{previewPrompt.dateLabel || '提示词'}}</view>
+
+          <view class="preview-tags">
+            <block wx:for="{{previewPrompt.tags}}" wx:for-item="tag" wx:key="*this">
+              <text class="tag">#{{tag}}</text>
+            </block>
+          </view>
+
+          <view class="prompt-editor-label">提示词</view>
+          <textarea
+            class="prompt-editor"
+            value="{{previewPromptText}}"
+            maxlength="-1"
+            fixed="{{true}}"
+            show-confirm-bar="{{false}}"
+            cursor-spacing="24"
+            placeholder="修改提示词后再生成..."
+            bindinput="handlePreviewPromptInput"
+          />
+          <view wx:if="{{previewPrompt.notes}}" class="note-text">{{previewPrompt.notes}}</view>
+        </view>
+      </scroll-view>
+      <view class="preview-actions">
+        <button class="secondary-btn" catchtap="closePreview">关闭</button>
+        <button class="primary-btn" loading="{{generatingId === previewPrompt.id}}" data-id="{{previewPrompt.id}}" catchtap="generateFromPrompt">
+          {{generatingId === previewPrompt.id ? '生成中' : '生成'}}
+        </button>
+      </view>
+    </view>
+  </view>
+</view>

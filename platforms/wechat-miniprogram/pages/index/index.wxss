@@ -36,7 +36,7 @@
   font-size: 34rpx;
   font-weight: 900;
   line-height: 64rpx;
-  background: #ff9eb5;
+  background: transparent;
   box-shadow: 0 8rpx 20rpx rgba(255, 112, 144, 0.25);
   margin-right: 16rpx;
 }

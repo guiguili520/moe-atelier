@@ -1,0 +1,42 @@
+<view class="page">
+  <view class="header">
+    <image class="brand-mark" src="/assets/logo.png" mode="aspectFill"></image>
+    <view>
+      <view class="title">生成配置</view>
+      <view class="subtitle">和 Web 版配置保持一致，保存后回到首页即可使用。</view>
+    </view>
+  </view>
+
+  <view class="panel">
+    <view class="panel-title">接口</view>
+    <view class="field">
+      <text class="label">接口格式</text>
+      <picker mode="selector" range="{{formatOptions}}" range-key="label" value="{{formatIndex}}" bindchange="handleFormatChange">
+        <view class="picker">{{formatOptions[formatIndex].label}}</view>
+      </picker>
+    </view>
+    <view class="field">
+      <text class="label">API 地址</text>
+      <input class="input" value="{{config.apiUrl}}" placeholder="https://api.openai.com/v1" bindinput="handleApiUrlInput" />
+    </view>
+    <view class="field">
+      <text class="label">API Key</text>
+      <input class="input" password value="{{config.apiKey}}" placeholder="填入你的 Key" bindinput="handleApiKeyInput" />
+    </view>
+    <view class="field last">
+      <text class="label">模型</text>
+      <input class="input" value="{{config.model}}" placeholder="gpt-image-1 / gemini 模型" bindinput="handleModelInput" />
+    </view>
+  </view>
+
+  <view class="panel">
+    <view class="panel-title">生成参数</view>
+    <view class="field last">
+      <text class="label">画幅</text>
+      <picker mode="selector" range="{{sizeOptions}}" range-key="desc" value="{{sizeIndex}}" bindchange="handleSizeChange">
+        <view class="picker">{{sizeOptions[sizeIndex].label}} · {{sizeOptions[sizeIndex].desc}}</view>
+      </picker>
+    </view>
+  </view>
+
+</view>
