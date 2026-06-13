@@ -1,0 +1,19 @@
+docs/superpowers/specs/2026-06-13-miniprogram-profile-history-design.md
+  s_5a1db90f202aef::t_8ee6e4852e60ce 1-186
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.6",
+  "base_commit_sha": "8d9f399fe7f521e1adfb34b8333072743ab572ea",
+  "prompts": {},
+  "sessions": {
+    "s_5a1db90f202aef": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bb61149b-e778-4c84-8db3-d37a7194d81b",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "xiaofei <1980028437@qq.com>"
+    }
+  }
+}
