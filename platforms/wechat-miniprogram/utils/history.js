@@ -63,7 +63,7 @@ const saveRemoteUrl = (src, createdAt) => new Promise((resolve, reject) => {
   wx.downloadFile({
     url: src,
     success: (res) => {
-      if (res.statusCode !== 200 || !res.tempFilePath) {
+      if (res.statusCode < 200 || res.statusCode >= 300 || !res.tempFilePath) {
         reject(new Error(`download failed: ${res.statusCode}`));
         return;
       }
@@ -87,7 +87,7 @@ const pruneExpired = () => {
   list.forEach((entry) => {
     const valid = entry && typeof entry.createdAt === 'number';
     const expired = !valid || (now - entry.createdAt) > HISTORY_TTL_MS;
-    const missing = !fileExists(entry && entry.filePath);
+    const missing = !valid || !fileExists(entry.filePath);
     if (expired || missing) {
       if (entry) deleteFile(entry.filePath);
     } else {
@@ -103,6 +103,9 @@ const pruneExpired = () => {
 };
 
 const loadHistory = () => pruneExpired();
+
+// 轻量计数：只读索引、不触发清理（调用方应已在本次 onShow 调过 loadHistory/pruneExpired）。
+const countHistory = () => readIndex().length;
 
 const addHistoryImage = async ({ src, title, prompt, promptId, apiFormat }) => {
   const createdAt = Date.now();
@@ -156,6 +159,7 @@ module.exports = {
   HISTORY_TTL_MS,
   addHistoryImage,
   loadHistory,
+  countHistory,
   pruneExpired,
   removeHistoryImage,
   clearHistory

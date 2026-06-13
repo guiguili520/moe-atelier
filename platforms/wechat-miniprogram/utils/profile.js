@@ -16,18 +16,20 @@ const loadProfile = () => {
 const persistAvatar = (avatarUrl) => {
   if (!avatarUrl) return '';
   if (String(avatarUrl).startsWith(userDir())) return avatarUrl;
+  const old = wx.getStorageSync(PROFILE_KEY);
+  const oldAvatar = (old && old.avatar) || '';
   const ext = (String(avatarUrl).match(/\.([a-z0-9]+)$/i) || [null, 'png'])[1];
   const dest = `${userDir()}/avatar-${Date.now()}.${ext}`;
   try {
-    const old = wx.getStorageSync(PROFILE_KEY);
-    if (old && old.avatar && String(old.avatar).startsWith(userDir())) {
-      try { fsm().unlinkSync(old.avatar); } catch (e) {}
-    }
     fsm().copyFileSync(avatarUrl, dest);
-    return dest;
   } catch (e) {
-    return avatarUrl;
+    return oldAvatar; // 复制失败：保留旧头像，绝不写入会失效的临时路径
   }
+  // 复制成功后再删旧头像
+  if (oldAvatar && oldAvatar.startsWith(userDir()) && oldAvatar !== dest) {
+    try { fsm().unlinkSync(oldAvatar); } catch (e) {}
+  }
+  return dest;
 };
 
 const saveProfile = ({ avatar, nickname }) => {
@@ -49,20 +51,26 @@ const clearProfile = () => {
   wx.removeStorageSync(PROFILE_KEY);
 };
 
+const readStats = () => {
+  const raw = wx.getStorageSync(STATS_KEY);
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return { totalGenerated: 0 };
+  return raw;
+};
+
 const incrementGenerated = (n) => {
-  const stats = wx.getStorageSync(STATS_KEY) || { totalGenerated: 0 };
+  const stats = readStats();
   stats.totalGenerated = (stats.totalGenerated || 0) + (n || 1);
   wx.setStorageSync(STATS_KEY, stats);
   return stats.totalGenerated;
 };
 
 const getStats = () => {
-  const stats = wx.getStorageSync(STATS_KEY) || { totalGenerated: 0 };
+  const stats = readStats();
   const favorites = wx.getStorageSync(FAVORITES_KEY) || [];
   return {
     totalGenerated: stats.totalGenerated || 0,
     favorites: Array.isArray(favorites) ? favorites.length : 0,
-    history7d: history.loadHistory().length
+    history7d: history.countHistory()
   };
 };
 
