@@ -1,0 +1,23 @@
+platforms/wechat-miniprogram/app.json
+  s_5a1db90f202aef::t_927703b0261e76 25-36
+scripts/generate-miniprogram-tabbar-icons.mjs
+  s_5a1db90f202aef::t_c2aa105f8d4e90 1-133
+package.json
+  s_5a1db90f202aef::t_da056739c0ee5a 15
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.6",
+  "base_commit_sha": "91edc40bdd39832fdbaa9f5ab764aaa1c21ef575",
+  "prompts": {},
+  "sessions": {
+    "s_5a1db90f202aef": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bb61149b-e778-4c84-8db3-d37a7194d81b",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "xiaofei <1980028437@qq.com>"
+    }
+  }
+}
