@@ -11,6 +11,9 @@
   "scripts": {
     "dev": "node server.mjs --dev",
     "build": "tsc && vite build",
+    "miniapp:wechat:check": "node scripts/validate-wechat-miniprogram.mjs",
+    "miniapp:tabbar:icons": "node scripts/generate-miniprogram-tabbar-icons.mjs",
+    "pwa:icons": "node scripts/generate-pwa-icons.mjs",
     "preview": "node server.mjs --prod",
     "start": "node server.mjs --prod"
   },
@@ -21,6 +24,7 @@
     "@dnd-kit/utilities": "^3.2.2",
     "antd": "^5.12.0",
     "axios": "^1.6.2",
+    "better-sqlite3": "^11.10.0",
     "express": "^4.19.2",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",

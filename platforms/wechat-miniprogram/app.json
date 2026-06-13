@@ -22,8 +22,18 @@
     "backgroundColor": "#fff9fa",
     "borderStyle": "white",
     "list": [
-      { "pagePath": "pages/index/index", "text": "广场" },
-      { "pagePath": "pages/profile/profile", "text": "我的" }
+      {
+        "pagePath": "pages/index/index",
+        "text": "广场",
+        "iconPath": "assets/tabbar/plaza.png",
+        "selectedIconPath": "assets/tabbar/plaza-active.png"
+      },
+      {
+        "pagePath": "pages/profile/profile",
+        "text": "我的",
+        "iconPath": "assets/tabbar/me.png",
+        "selectedIconPath": "assets/tabbar/me-active.png"
+      }
     ]
   }
 }
