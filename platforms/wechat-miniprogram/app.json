@@ -1,0 +1,29 @@
+{
+  "pages": [
+    "pages/index/index",
+    "pages/profile/profile",
+    "pages/config/config"
+  ],
+  "window": {
+    "navigationBarTitleText": "次元绘图",
+    "navigationBarBackgroundColor": "#FFF9FA",
+    "navigationBarTextStyle": "black",
+    "backgroundColor": "#FFF9FA",
+    "backgroundTextStyle": "dark"
+  },
+  "networkTimeout": {
+    "request": 600000
+  },
+  "style": "v2",
+  "sitemapLocation": "sitemap.json",
+  "tabBar": {
+    "color": "#8d6e63",
+    "selectedColor": "#ff9eb5",
+    "backgroundColor": "#fff9fa",
+    "borderStyle": "white",
+    "list": [
+      { "pagePath": "pages/index/index", "text": "广场" },
+      { "pagePath": "pages/profile/profile", "text": "我的" }
+    ]
+  }
+}
