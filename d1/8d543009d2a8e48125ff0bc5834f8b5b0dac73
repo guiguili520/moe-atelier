@@ -1,0 +1,19 @@
+docs/superpowers/plans/2026-06-13-miniprogram-profile-history.md
+  s_5a1db90f202aef::t_140ebd4858d96b 1-1113
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.6",
+  "base_commit_sha": "d18d543009d2a8e48125ff0bc5834f8b5b0dac73",
+  "prompts": {},
+  "sessions": {
+    "s_5a1db90f202aef": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bb61149b-e778-4c84-8db3-d37a7194d81b",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "xiaofei <1980028437@qq.com>"
+    }
+  }
+}
