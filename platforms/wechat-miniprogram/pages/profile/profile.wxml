@@ -1,0 +1,79 @@
+<view class="page">
+  <view class="profile-head">
+    <block wx:if="{{profile}}">
+      <image class="avatar-img" src="{{profile.avatar}}" mode="aspectFill"></image>
+      <view class="profile-meta">
+        <view class="nickname">{{profile.nickname}}</view>
+        <view class="join">已陪伴你 {{joinDays}} 天</view>
+      </view>
+      <view class="edit-btn" catchtap="startEdit">编辑</view>
+    </block>
+    <block wx:else>
+      <view class="avatar-img placeholder">游</view>
+      <view class="profile-meta">
+        <view class="nickname">未登录</view>
+        <view class="join">登录后可保存头像与昵称</view>
+      </view>
+      <view class="edit-btn primary" catchtap="startEdit">登录</view>
+    </block>
+  </view>
+
+  <view wx:if="{{editing}}" class="edit-panel">
+    <view class="edit-row">
+      <text class="edit-label">头像</text>
+      <button class="avatar-picker" open-type="chooseAvatar" bindchooseavatar="onChooseAvatar">
+        <image wx:if="{{draftAvatar}}" class="avatar-preview" src="{{draftAvatar}}" mode="aspectFill"></image>
+        <text wx:else class="avatar-preview-tip">选择头像</text>
+      </button>
+    </view>
+    <view class="edit-row">
+      <text class="edit-label">昵称</text>
+      <input class="nickname-input" type="nickname" value="{{draftNickname}}" placeholder="点击填写昵称" bindinput="onNicknameInput" bindblur="onNicknameInput" />
+    </view>
+    <view class="edit-actions">
+      <view class="edit-cancel" catchtap="cancelEdit">取消</view>
+      <view class="edit-save" catchtap="saveEdit">保存</view>
+    </view>
+  </view>
+
+  <view class="stats-card">
+    <view class="stat">
+      <view class="stat-num">{{stats.totalGenerated}}</view>
+      <view class="stat-label">累计生成</view>
+    </view>
+    <view class="stat">
+      <view class="stat-num">{{stats.favorites}}</view>
+      <view class="stat-label">收藏</view>
+    </view>
+    <view class="stat">
+      <view class="stat-num">{{stats.history7d}}</view>
+      <view class="stat-label">7天作品</view>
+    </view>
+  </view>
+
+  <view class="history-panel">
+    <view class="panel-head">
+      <view class="panel-kicker">最近 7 天</view>
+      <view class="panel-title">我的作品</view>
+    </view>
+    <view wx:if="{{history.length > 0}}" class="history-grid">
+      <block wx:for="{{history}}" wx:key="id">
+        <view class="history-cell" data-src="{{item.filePath}}" bindtap="previewImage">
+          <image class="history-img" src="{{item.filePath}}" mode="aspectFill"></image>
+          <text class="history-date">{{item.dateLabel}}</text>
+        </view>
+      </block>
+    </view>
+    <view wx:else class="history-empty">7 天内还没有作品，去广场生成吧～</view>
+  </view>
+
+  <view class="menu-card">
+    <view class="menu-item" catchtap="goConfig">
+      <text>生成配置</text>
+      <text class="menu-arrow">›</text>
+    </view>
+    <view wx:if="{{profile}}" class="menu-item danger" catchtap="logout">
+      <text>退出登录</text>
+    </view>
+  </view>
+</view>
