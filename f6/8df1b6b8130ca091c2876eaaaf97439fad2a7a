@@ -1,0 +1,41 @@
+platforms/wechat-miniprogram/pages/index/index.wxss
+  s_5a1db90f202aef::t_572ff8e635e63e 39
+platforms/wechat-miniprogram/pages/config/config.wxss
+  s_5a1db90f202aef::t_1e1fd448bfe6f1 49
+  s_5a1db90f202aef::t_2260464369c49e 58
+  s_5a1db90f202aef::t_8d30150ca5eac9 29
+  s_5a1db90f202aef::t_5b63266f5c26db 82
+platforms/wechat-miniprogram/pages/config/config.wxml
+  s_5a1db90f202aef::t_10ae7f17602bde 3
+platforms/wechat-miniprogram/pages/index/index.wxml
+  s_5a1db90f202aef::t_54c9f1d840c934 12-15
+  s_5a1db90f202aef::t_e59339d762518d 118,120
+  s_124f97231d3aa4::t_d2fa39181bf075 28-49,119,150-167
+  s_5a1db90f202aef::t_10abffeeae41f1 4
+  s_5a1db90f202aef::t_81de2237b5cf15 22-24
+  s_5a1db90f202aef::t_74bfa4a5a1ab65 102
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.6",
+  "base_commit_sha": "f68df1b6b8130ca091c2876eaaaf97439fad2a7a",
+  "prompts": {},
+  "sessions": {
+    "s_124f97231d3aa4": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019eaa60-e1d3-7470-b3b2-03e7cd24235c",
+        "model": "gpt-5.5"
+      },
+      "human_author": "xiaofei <1980028437@qq.com>"
+    },
+    "s_5a1db90f202aef": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bb61149b-e778-4c84-8db3-d37a7194d81b",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "xiaofei <1980028437@qq.com>"
+    }
+  }
+}
