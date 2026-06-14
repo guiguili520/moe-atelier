@@ -3,7 +3,7 @@
     <image class="brand-mark" src="/assets/logo.png" mode="aspectFill"></image>
     <view>
       <view class="title">生成配置</view>
-      <view class="subtitle">和 Web 版配置保持一致，保存后回到首页即可使用。</view>
+      <view class="subtitle">填好地址和 Key 会自动拉取模型，改完记得点底部保存。</view>
     </view>
   </view>
 
@@ -24,8 +24,17 @@
       <input class="input" password value="{{config.apiKey}}" placeholder="填入你的 Key" bindinput="handleApiKeyInput" />
     </view>
     <view class="field last">
-      <text class="label">模型</text>
-      <input class="input" value="{{config.model}}" placeholder="gpt-image-1 / gemini 模型" bindinput="handleModelInput" />
+      <view class="label-row">
+        <text class="label">模型</text>
+        <view class="model-tools">
+          <view class="model-toggle" catchtap="toggleShowAll">{{showAllModels ? '只看生图' : '显示全部'}}</view>
+          <view class="model-refresh {{loadingModels ? 'loading' : ''}}" catchtap="refreshModels">{{loadingModels ? '获取中' : '刷新'}}</view>
+        </view>
+      </view>
+      <input class="input" value="{{config.model}}" placeholder="gpt-image-1 / 自定义输入" bindinput="handleModelInput" />
+      <picker class="model-picker" mode="selector" range="{{models}}" bindchange="handleModelPick" disabled="{{models.length === 0}}">
+        <view class="picker model-picker-view">{{models.length ? ('从 ' + models.length + ' 个可用模型选择') : '填好地址和 Key 后自动获取'}}</view>
+      </picker>
     </view>
   </view>
 
@@ -39,4 +48,5 @@
     </view>
   </view>
 
+  <button class="save-btn {{dirty ? 'dirty' : ''}}" bindtap="saveAll">{{dirty ? '保存配置（有改动）' : '保存配置'}}</button>
 </view>

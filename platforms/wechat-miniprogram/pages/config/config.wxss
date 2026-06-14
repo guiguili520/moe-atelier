@@ -100,3 +100,61 @@
 button::after {
   border: 0;
 }
+
+.label-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10rpx;
+}
+
+.label-row .label {
+  margin-bottom: 0;
+}
+
+.model-tools {
+  display: flex;
+  align-items: center;
+}
+
+.model-toggle,
+.model-refresh {
+  margin-left: 12rpx;
+  padding: 5rpx 16rpx;
+  border-radius: 999rpx;
+  color: #8d6e63;
+  font-size: 22rpx;
+  font-weight: 800;
+  line-height: 1.5;
+  background: #fff1f4;
+}
+
+.model-refresh.loading {
+  color: #ffffff;
+  background: #ffc2d1;
+}
+
+.model-picker {
+  margin-top: 12rpx;
+}
+
+.model-picker-view {
+  color: #8d6e63;
+  font-weight: 700;
+}
+
+.save-btn {
+  height: 88rpx;
+  margin: 8rpx 0 0;
+  border-radius: 999rpx;
+  color: #ffffff;
+  font-size: 30rpx;
+  font-weight: 900;
+  line-height: 88rpx;
+  background: #ff9eb5;
+  box-shadow: 0 10rpx 24rpx rgba(255, 112, 144, 0.26);
+}
+
+.save-btn.dirty {
+  background: #ff7a90;
+}
