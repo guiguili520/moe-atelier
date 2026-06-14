@@ -1,10 +1,12 @@
-import crypto from 'node:crypto'
+import Database from 'better-sqlite3'
 import fs from 'node:fs'
 import path from 'node:path'
 import {
   backendCollectionPath,
+  backendDbPath,
   backendStatePath,
   backendTasksDir,
+  serverDataDir,
   DEFAULT_BACKEND_CONFIG,
   DEFAULT_CONCURRENCY,
   DEFAULT_GLOBAL_STATS,
@@ -15,13 +17,44 @@ import {
 } from './config.mjs'
 import { broadcastSseEvent } from './sse.mjs'
 
-const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
+fs.mkdirSync(serverDataDir, { recursive: true })
 
-const readJsonFile = async (filePath, fallback) => {
+const db = new Database(backendDbPath)
+db.pragma('journal_mode = WAL')
+db.pragma('foreign_keys = ON')
+db.pragma('busy_timeout = 5000')
+
+db.exec(`
+  CREATE TABLE IF NOT EXISTS app_kv (
+    key TEXT PRIMARY KEY,
+    value TEXT NOT NULL,
+    updated_at INTEGER NOT NULL
+  );
+
+  CREATE TABLE IF NOT EXISTS tasks (
+    id TEXT PRIMARY KEY,
+    state TEXT NOT NULL,
+    updated_at INTEGER NOT NULL
+  );
+`)
+
+const KV_STATE = 'backend_state'
+const KV_COLLECTION = 'backend_collection'
+const KV_JSON_MIGRATION = 'json_migration_v1'
+
+const parseJson = (raw, fallback) => {
   try {
-    const raw = await fs.promises.readFile(filePath, 'utf-8')
-    if (!raw.trim()) return fallback
+    if (typeof raw !== 'string' || !raw.trim()) return fallback
     return JSON.parse(raw)
+  } catch {
+    return fallback
+  }
+}
+
+const readJsonFileSync = (filePath, fallback) => {
+  try {
+    const raw = fs.readFileSync(filePath, 'utf-8')
+    return parseJson(raw, fallback)
   } catch (err) {
     if (err && err.code === 'ENOENT') return fallback
     if (err && err.name === 'SyntaxError') {
@@ -32,65 +65,20 @@ const readJsonFile = async (filePath, fallback) => {
   }
 }
 
-const writeJsonFileAtomic = async (filePath, data) => {
-  const dir = path.dirname(filePath)
-  const baseName = path.basename(filePath)
-  const payload = JSON.stringify(data, null, 2)
-  await fs.promises.mkdir(dir, { recursive: true })
+const getKv = (key, fallback) => {
+  const row = db.prepare('SELECT value FROM app_kv WHERE key = ?').get(key)
+  if (!row) return fallback
+  return parseJson(row.value, fallback)
+}
 
-  let tempPath = ''
-  for (let attempt = 0; attempt < 3; attempt += 1) {
-    const nonce = crypto.randomUUID()
-    tempPath = path.join(
-      dir,
-      `.${baseName}.${process.pid}.${Date.now()}.${nonce}.tmp`,
-    )
-    try {
-      await fs.promises.writeFile(tempPath, payload, { encoding: 'utf-8', flag: 'wx' })
-      break
-    } catch (err) {
-      if (err && err.code === 'EEXIST' && attempt < 2) continue
-      throw err
-    }
-  }
-
-  try {
-    await fs.promises.rename(tempPath, filePath)
-  } catch (err) {
-    if (err && err.code === 'ENOENT') {
-      await fs.promises.mkdir(dir, { recursive: true })
-      try {
-        await fs.promises.rename(tempPath, filePath)
-        return
-      } catch (retryErr) {
-        if (!retryErr || retryErr.code !== 'ENOENT') {
-          throw retryErr
-        }
-      }
-      await fs.promises.writeFile(filePath, payload, { encoding: 'utf-8' })
-      return
-    }
-    if (err && ['EPERM', 'EACCES', 'EBUSY'].includes(err.code)) {
-      for (let attempt = 0; attempt < 3; attempt += 1) {
-        await sleep(30 * (attempt + 1))
-        try {
-          await fs.promises.rename(tempPath, filePath)
-          return
-        } catch (retryErr) {
-          if (!retryErr || !['EPERM', 'EACCES', 'EBUSY'].includes(retryErr.code)) {
-            throw retryErr
-          }
-        }
-      }
-      await fs.promises.writeFile(filePath, payload, { encoding: 'utf-8' })
-      return
-    }
-    throw err
-  } finally {
-    if (tempPath) {
-      await fs.promises.unlink(tempPath).catch(() => undefined)
-    }
-  }
+const setKv = (key, value) => {
+  db.prepare(`
+    INSERT INTO app_kv (key, value, updated_at)
+    VALUES (?, ?, ?)
+    ON CONFLICT(key) DO UPDATE SET
+      value = excluded.value,
+      updated_at = excluded.updated_at
+  `).run(key, JSON.stringify(value), Date.now())
 }
 
 const coerceString = (value) => (typeof value === 'string' ? value : '')
@@ -155,8 +143,7 @@ export const createDefaultTaskState = () => ({
   stats: { ...DEFAULT_TASK_STATS },
 })
 
-export const loadBackendState = async () => {
-  const data = await readJsonFile(backendStatePath, null)
+const normalizeBackendState = (data) => {
   const config = { ...DEFAULT_BACKEND_CONFIG, ...(data?.config || {}) }
   const rawFormatMap = data?.configByFormat
   const configByFormat =
@@ -179,24 +166,7 @@ export const loadBackendState = async () => {
   }
 }
 
-export const saveBackendState = async (state) => {
-  await writeJsonFileAtomic(backendStatePath, state)
-  broadcastSseEvent('state', state)
-}
-
-export const loadBackendCollection = async () => {
-  const data = await readJsonFile(backendCollectionPath, [])
-  return normalizeCollectionPayload(data)
-}
-
-export const saveBackendCollection = async (items) => {
-  await writeJsonFileAtomic(backendCollectionPath, items)
-}
-
-const getTaskFilePath = (taskId) => path.join(backendTasksDir, `${taskId}.json`)
-
-export const loadTaskState = async (taskId) => {
-  const data = await readJsonFile(getTaskFilePath(taskId), null)
+const normalizeTaskState = (data) => {
   if (!data) return null
   return {
     ...createDefaultTaskState(),
@@ -208,9 +178,89 @@ export const loadTaskState = async (taskId) => {
   }
 }
 
+const insertTask = db.prepare(`
+  INSERT INTO tasks (id, state, updated_at)
+  VALUES (?, ?, ?)
+  ON CONFLICT(id) DO UPDATE SET
+    state = excluded.state,
+    updated_at = excluded.updated_at
+`)
+
+const migrateJsonFiles = () => {
+  if (getKv(KV_JSON_MIGRATION, false)) return
+
+  const migrate = db.transaction(() => {
+    if (!db.prepare('SELECT 1 FROM app_kv WHERE key = ?').get(KV_STATE)) {
+      const state = readJsonFileSync(backendStatePath, null)
+      if (state) setKv(KV_STATE, normalizeBackendState(state))
+    }
+
+    if (!db.prepare('SELECT 1 FROM app_kv WHERE key = ?').get(KV_COLLECTION)) {
+      const collection = readJsonFileSync(backendCollectionPath, null)
+      if (collection) setKv(KV_COLLECTION, normalizeCollectionPayload(collection))
+    }
+
+    let entries = []
+    try {
+      entries = fs.readdirSync(backendTasksDir, { withFileTypes: true })
+    } catch (err) {
+      if (!err || err.code !== 'ENOENT') throw err
+    }
+
+    entries
+      .filter((entry) => entry.isFile() && entry.name.endsWith('.json'))
+      .forEach((entry) => {
+        const taskId = path.basename(entry.name, '.json')
+        const exists = db.prepare('SELECT 1 FROM tasks WHERE id = ?').get(taskId)
+        if (exists) return
+        const data = readJsonFileSync(path.join(backendTasksDir, entry.name), null)
+        const state = normalizeTaskState(data)
+        if (state) insertTask.run(taskId, JSON.stringify(state), Date.now())
+      })
+
+    setKv(KV_JSON_MIGRATION, {
+      migratedAt: new Date().toISOString(),
+      source: 'server-data json files',
+    })
+  })
+
+  migrate()
+}
+
+migrateJsonFiles()
+
+export const loadBackendState = async () =>
+  normalizeBackendState(getKv(KV_STATE, null))
+
+export const saveBackendState = async (state) => {
+  const next = normalizeBackendState(state)
+  setKv(KV_STATE, next)
+  broadcastSseEvent('state', next)
+}
+
+export const loadBackendCollection = async () =>
+  normalizeCollectionPayload(getKv(KV_COLLECTION, []))
+
+export const saveBackendCollection = async (items) => {
+  setKv(KV_COLLECTION, normalizeCollectionPayload(items))
+}
+
+export const listBackendTaskIds = async () =>
+  db.prepare('SELECT id FROM tasks ORDER BY updated_at ASC').all().map((row) => row.id)
+
+export const loadTaskState = async (taskId) => {
+  const row = db.prepare('SELECT state FROM tasks WHERE id = ?').get(taskId)
+  return normalizeTaskState(parseJson(row?.state, null))
+}
+
 export const saveTaskState = async (taskId, state) => {
-  await writeJsonFileAtomic(getTaskFilePath(taskId), state)
-  broadcastSseEvent('task', { taskId, state })
+  const next = normalizeTaskState(state) || createDefaultTaskState()
+  insertTask.run(taskId, JSON.stringify(next), Date.now())
+  broadcastSseEvent('task', { taskId, state: next })
+}
+
+export const deleteTaskState = async (taskId) => {
+  db.prepare('DELETE FROM tasks WHERE id = ?').run(taskId)
 }
 
 export const normalizeCollectionPayloadForSave = normalizeCollectionPayload

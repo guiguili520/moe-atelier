@@ -465,11 +465,55 @@ const BUILTIN_SOURCES = [
 ];
 const PROMO_NOTE_PATTERNS = [/labnana/i, /aff=/i, /邀请链接/, /分享给你试试/, /通过我的邀请链接/];
 const NSFW_KEYWORDS = ['猎奇', '恐怖'];
+const ADULT_CONTENT_KEYWORDS = [
+  '色情', '情色', '成人向', '成人内容', '成人漫画', '成人游戏', '黄图', '黄漫', '黄片',
+  '18禁', '一丝不挂', '裸露', '裸体', '全裸', '半裸', '赤裸', '裸身', '裸女', '裸男', '裸胸', '裸臀',
+  '露点', '露乳', '露胸', '露私处', '私处', '阴部', '阴茎', '阴道', '龟头', '睾丸',
+  '乳头', '乳晕', '乳房', '乳交', '胸部特写', '巨乳', '爆乳',
+  '内衣', '情趣内衣', '蕾丝内衣', '丁字裤', '内裤', '胖次',
+  '性暗示', '性感', '挑逗', '诱惑', '媚惑', '性爱', '性交', '做爱', '性行为', '性姿势', '性器',
+  '口交', '肛交', '手交', '足交', '自慰', '手淫', '高潮', '射精', '精液', '内射', '颜射', '潮吹',
+  '淫', '淫乱', '淫荡', '淫纹', '发情', '春药', '调教', '凌辱', '强奸', '轮奸',
+  '捆绑', '拘束', '束缚', '绳缚', '女奴', '羞辱', '无码', '无修正',
+  'エロ', 'セックス', '乳首', 'パンツ'
+];
+const ADULT_CONTENT_PATTERNS = [
+  /\b(?:nsfw|nfsw|r-?18|18\+|xxx|porn(?:o|ographic)?|hentai|ecchi|ahegao)\b/i,
+  /\b(?:erotic|sexy|sex|sexual|nude|nudity|naked|topless|bottomless|onlyfans)\b/i,
+  /\b(?:lingerie|panties|underwear|nipples?|areolas?|breasts?|boobs?|cleavage)\b/i,
+  /\b(?:pussy|vagina|penis|cock|dick|cum|semen|ejaculat(?:e|ion)|orgasm)\b/i,
+  /\b(?:masturbat(?:e|ion)|blowjob|handjob|anal|rape|molest(?:ed|ation)?|bdsm|bondage|shibari)\b/i
+];
 
 const hasNsfwKeyword = (value: string) => {
   const normalized = value.trim();
   return NSFW_KEYWORDS.some(keyword => normalized.includes(keyword));
 };
+
+const normalizeModerationText = (value: string) => value.normalize('NFKC').toLowerCase();
+
+const hasAdultContentKeyword = (value?: string) => {
+  if (!value) return false;
+  const normalized = normalizeModerationText(value);
+  return ADULT_CONTENT_KEYWORDS.some(keyword => normalized.includes(normalizeModerationText(keyword)))
+    || ADULT_CONTENT_PATTERNS.some(pattern => pattern.test(normalized));
+};
+
+const getPromptModerationText = (prompt: ExtendedPromptItem) => [
+  prompt.title,
+  prompt.content,
+  prompt.sectionTitle,
+  prompt.contributor,
+  prompt.notes,
+  ...(prompt.tags || []),
+  ...(prompt.similar || []).flatMap(variant => [
+    variant.content,
+    variant.contributor,
+    variant.notes
+  ])
+].filter((value): value is string => Boolean(value)).join('\n');
+
+const isBlockedAdultPrompt = (prompt: ExtendedPromptItem) => hasAdultContentKeyword(getPromptModerationText(prompt));
 
 const sanitizePromoNotes = (text?: string) => {
   if (!text) return '';
@@ -899,12 +943,28 @@ const PromptDrawer: React.FC<PromptDrawerProps> = ({ visible, onClose, onCreateT
     );
   }, [data]);
 
-  const newPrompts = useMemo(() => {
-    return allPrompts.filter(p => isNewItem(p.id, p.createdAt));
+  const safePrompts = useMemo(() => {
+    return allPrompts.filter(prompt => !isBlockedAdultPrompt(prompt));
   }, [allPrompts]);
 
+  const sectionPromptCounts = useMemo(() => {
+    const counts = new Map<string, number>();
+    safePrompts.forEach(prompt => {
+      counts.set(prompt.sectionId, (counts.get(prompt.sectionId) || 0) + 1);
+    });
+    return counts;
+  }, [safePrompts]);
+
+  const favoritePromptCount = useMemo(() => {
+    return safePrompts.filter(prompt => favorites.includes(prompt.id)).length;
+  }, [safePrompts, favorites]);
+
+  const newPrompts = useMemo(() => {
+    return safePrompts.filter(p => isNewItem(p.id, p.createdAt));
+  }, [safePrompts]);
+
   const filteredPrompts = useMemo(() => {
-    let result = allPrompts;
+    let result = safePrompts;
 
     // Filter by Tab
     if (activeTab === 'favorites') {
@@ -942,7 +1002,7 @@ const PromptDrawer: React.FC<PromptDrawerProps> = ({ visible, onClose, onCreateT
         return a.index - b.index;
       })
       .map(({ prompt }) => prompt);
-  }, [allPrompts, activeTab, searchText, selectedTags, favorites]);
+  }, [safePrompts, activeTab, searchText, selectedTags, favorites]);
 
   const paginatedPrompts = useMemo(() => {
     const start = (currentPage - 1) * PAGE_SIZE;
@@ -952,7 +1012,7 @@ const PromptDrawer: React.FC<PromptDrawerProps> = ({ visible, onClose, onCreateT
   const availableTags = useMemo(() => {
     const tags = new Set<string>();
     // 从当前 Tab 上下文收集标签
-    let contextPrompts = allPrompts;
+    let contextPrompts = safePrompts;
     if (activeTab === 'favorites') {
       contextPrompts = contextPrompts.filter(p => favorites.includes(p.id));
     } else if (activeTab === 'new') {
@@ -965,17 +1025,17 @@ const PromptDrawer: React.FC<PromptDrawerProps> = ({ visible, onClose, onCreateT
       p.tags?.forEach(t => tags.add(t));
     });
     return Array.from(tags).sort();
-  }, [allPrompts, activeTab, favorites]);
+  }, [safePrompts, activeTab, favorites]);
 
   const contributorPrompts = useMemo(() => {
     if (!selectedContributor) return [];
-    return allPrompts.filter(p => {
+    return safePrompts.filter(p => {
       const pContributor = p.contributor || '匿名';
       return pContributor === selectedContributor;
     }).sort((a, b) => {
       return b.id.localeCompare(a.id);
     });
-  }, [allPrompts, selectedContributor]);
+  }, [safePrompts, selectedContributor]);
 
   const contributorSections = useMemo(() => {
     const sections = new Set<string>();
@@ -1015,6 +1075,10 @@ const PromptDrawer: React.FC<PromptDrawerProps> = ({ visible, onClose, onCreateT
 
   // Preview Modal Logic
   const openPreview = (prompt: ExtendedPromptItem) => {
+    if (isBlockedAdultPrompt(prompt)) {
+      message.warning('该提示词包含不适宜内容，已过滤');
+      return;
+    }
     setPreviewPrompt(prompt);
     setPreviewImageIndex(0);
     setActiveVariantIndex(0);
@@ -1241,9 +1305,9 @@ const PromptDrawer: React.FC<PromptDrawerProps> = ({ visible, onClose, onCreateT
         </Title>}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           {[
-            { id: 'all', label: '全部', color: '#FF9EB5', icon: CompassFilled, badge: allPrompts.length },
+            { id: 'all', label: '全部', color: '#FF9EB5', icon: CompassFilled, badge: safePrompts.length },
             { id: 'new', label: '最新', color: COLORS.new, icon: FireFilled, badge: newPrompts.length },
-            { id: 'favorites', label: '我的收藏', color: COLORS.gold, icon: StarFilled, badge: favorites.length }
+            { id: 'favorites', label: '我的收藏', color: COLORS.gold, icon: StarFilled, badge: favoritePromptCount }
           ].map(item => {
             const isActive = activeTab === item.id;
             const IconComponent = item.icon;
@@ -1283,7 +1347,7 @@ const PromptDrawer: React.FC<PromptDrawerProps> = ({ visible, onClose, onCreateT
           {!isPromptManagerSource && data?.sections.length ? (
             <>
               <div style={{ height: 1, background: COLORS.secondary, margin: '8px 0', opacity: 0.5 }}></div>
-              {data.sections.map(section => (
+              {data.sections.filter(section => (sectionPromptCounts.get(section.id) || 0) > 0).map(section => (
                 <Button 
                   key={section.id}
                   type={activeTab === section.id ? 'primary' : 'text'}
@@ -1303,7 +1367,7 @@ const PromptDrawer: React.FC<PromptDrawerProps> = ({ visible, onClose, onCreateT
                 >
                   <span>{section.title}</span>
                   <Badge 
-                    count={section.prompts.length} 
+                    count={sectionPromptCounts.get(section.id) || 0} 
                     overflowCount={99999} 
                     style={{ 
                       backgroundColor: activeTab === section.id ? COLORS.primary : '#F0F0F0',
@@ -2384,6 +2448,52 @@ const PromptDrawer: React.FC<PromptDrawerProps> = ({ visible, onClose, onCreateT
           color: ${COLORS.secondary};
           font-size: 12px;
           padding: 0 4px;
+        }
+
+        @media (max-width: 768px) {
+          .cute-pagination {
+            flex-wrap: nowrap;
+            gap: 4px;
+            margin-top: 20px;
+            margin-bottom: 8px;
+            width: 100%;
+            min-width: 0;
+          }
+
+          .cute-pagination-nav {
+            width: 28px !important;
+            height: 28px !important;
+            min-width: 28px !important;
+            padding: 0 !important;
+            flex: 0 0 28px;
+          }
+
+          .cute-pagination-nav .anticon {
+            font-size: 16px !important;
+          }
+
+          .cute-pagination-pages {
+            flex: 0 1 auto;
+            min-width: 0;
+            gap: 2px;
+            padding: 3px;
+            border-radius: 18px;
+          }
+
+          .cute-pagination-item {
+            width: 27px;
+            height: 27px;
+            min-width: 27px;
+            font-size: 12px;
+          }
+
+          .cute-pagination-ellipsis {
+            width: 22px;
+            min-width: 22px;
+            padding: 0;
+            text-align: center;
+            font-size: 11px;
+          }
         }
       `}</style>
     </>

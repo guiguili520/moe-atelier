@@ -21,6 +21,10 @@ npm run dev
 ```
 浏览器访问 `http://localhost:5173`。
 
+## 多端入口
+- H5/PWA 手机端：运行 `npm run dev` 后用手机浏览器访问服务地址。
+- 微信小程序端：用微信开发者工具导入 `platforms/wechat-miniprogram`，可先运行 `npm run miniapp:wechat:check` 校验目录。
+
 ## 生产构建与运行
 ```bash
 npm run build
@@ -60,14 +64,18 @@ BACKEND_LOG_RESPONSE=0
 2) 启动 `server.mjs`（`npm run dev` / `npm run start`）。
 3) 打开前端「系统配置」里的「后端模式」，输入上面的密码即可。
 
-后端数据会存放在 `server-data/`（任务信息、上传图与生成图、全局状态）。
-注意：后端模式会把 API Key 等配置写入 `server-data/state.json`，请妥善保管服务器。
+后端数据会存放在 `server-data/`：
+- `server-data/moe-atelier.sqlite`：SQLite 数据库，保存配置、任务、收藏和统计。
+- `server-data/images/`：上传图与生成图缓存。
+
+旧版 `server-data/state.json`、`server-data/collection.json`、`server-data/tasks/*.json` 会在首次启动时自动迁移进 SQLite。注意：后端模式会把 API Key 等配置写入 SQLite，请妥善保管服务器和数据库备份。
 
 ## 环境变量
 - `BACKEND_PASSWORD`：启用后端模式所需密码（必填）。
 - `BACKEND_LOG_REQUESTS`：打印请求日志（`1/true/yes` 开启）。
 - `BACKEND_LOG_OUTBOUND`：打印后端到模型服务的请求日志。
 - `BACKEND_LOG_RESPONSE`：打印模型响应（会截断长内容）。
+- `BACKEND_DB_PATH`：SQLite 数据库路径，默认 `server-data/moe-atelier.sqlite`。
 - `PORT`：服务监听端口，默认 `5173`。
 - `VITE_HOST`：开发模式下的 Vite Host，外网访问时可设为 `0.0.0.0`。
 
@@ -99,8 +107,7 @@ PORT=8080 npm run start
 ## 目录结构
 - `src/`：前端源码
 - `server.mjs`：本地服务（开发中挂载 Vite，生产提供静态资源与 `/api/save-image`）
-- `server-data/state.json`：后端配置与全局统计（后端模式）
-- `server-data/tasks/`：任务缓存（后端模式）
+- `server-data/moe-atelier.sqlite`：后端 SQLite 数据库（后端模式）
 - `server-data/images/`：上传/生成图片缓存（后端模式）
 - `dist/`：构建产物
 - `saved-images/`：本地保存图片目录（自动创建）

@@ -76,7 +76,7 @@ const SortableTaskItem = ({
   };
 
   return (
-    <Col id={task.id} xs={24} sm={12} xl={8} ref={setNodeRef} style={style}>
+    <Col id={task.id} xs={24} sm={12} xl={8} ref={setNodeRef} style={style} className="task-grid-col">
       <div className="fade-in-up" style={{ height: '100%' }}>
         <ImageTask
           id={task.id}
@@ -188,7 +188,7 @@ const TaskGrid: React.FC<TaskGridProps> = ({
       onDragCancel={handleDragCancel}
     >
       <SortableContext items={tasks.map((t) => t.id)} strategy={rectSortingStrategy}>
-        <Row gutter={[24, 24]}>
+        <Row gutter={[24, 24]} className="task-grid-row">
           {tasks.map((task) => (
             <SortableTaskItem
               key={task.id}

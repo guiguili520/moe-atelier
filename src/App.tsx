@@ -1024,7 +1024,7 @@ function App() {
         }
       }}
     >
-      <Layout style={{ minHeight: '100vh', background: 'transparent' }}>
+      <Layout className="app-layout" style={{ minHeight: '100vh', background: 'transparent' }}>
         {/* 顶部导航栏 */}
         <Header className="app-header" style={{ 
           height: 72, 
@@ -1055,9 +1055,13 @@ function App() {
               <HeartFilled style={{ fontSize: 20, color: '#fff' }} />
             </div>
             <div>
-              <Title level={4} style={{ margin: 0, color: '#665555', fontWeight: 800, letterSpacing: '-0.5px', lineHeight: 1, whiteSpace: 'nowrap' }}>
+              <Title level={4} style={{ margin: 0, color: '#665555', fontWeight: 800, letterSpacing: 0, lineHeight: 1, whiteSpace: 'nowrap' }}>
                 萌图 <span style={{ color: '#FF9EB5' }}>工坊</span>
               </Title>
+              <div className="mobile-header-meta">
+                <span>{tasks.length} 个任务</span>
+                <span>{successRate}% 成功率</span>
+              </div>
             </div>
           </div>
 
@@ -1110,17 +1114,19 @@ function App() {
               icon={<PlusOutlined />} 
               onClick={handleAddTask}
               size="large"
+              className="mobile-hidden"
             >
               新建任务
             </Button>
           </Space>
         </Header>
         
-        <Content style={{ padding: '24px', maxWidth: 1400, margin: '0 auto', width: '100%' }}>
+        <Content className="app-content" style={{ padding: '24px', maxWidth: 1400, margin: '0 auto', width: '100%' }}>
           
           {/* 数据仪表盘 - 重新设计 */}
-          <div className="fade-in-up" style={{ marginBottom: 32 }}>
+          <div className="fade-in-up overview-section" style={{ marginBottom: 32 }}>
             <div
+              className="section-heading"
               style={{
                 display: 'flex',
                 alignItems: 'center',
@@ -1153,8 +1159,8 @@ function App() {
             </div>
             
             <div className="stat-panel">
-              <Row gutter={[16, 16]}>
-                <Col xs={12} sm={8} lg={4}>
+              <Row gutter={[16, 16]} className="stats-grid-row">
+                <Col xs={12} sm={8} lg={4} className="stat-col">
                   <div className="stat-item">
                     <div style={{ 
                       width: 40, height: 40, borderRadius: '50%', background: '#E0F7FA', color: '#00BCD4',
@@ -1166,7 +1172,7 @@ function App() {
                     <div className="stat-label">总请求数</div>
                   </div>
                 </Col>
-                <Col xs={12} sm={8} lg={4}>
+                <Col xs={12} sm={8} lg={4} className="stat-col">
                   <div className="stat-item">
                     <div style={{ 
                       width: 40, height: 40, borderRadius: '50%', background: '#E8F5E9', color: '#4CAF50',
@@ -1178,7 +1184,7 @@ function App() {
                     <div className="stat-label">成功生成</div>
                   </div>
                 </Col>
-                <Col xs={12} sm={8} lg={4}>
+                <Col xs={12} sm={8} lg={4} className="stat-col">
                   <div className="stat-item">
                     <div style={{ 
                       width: 40, height: 40, borderRadius: '50%', background: '#FFF8E1', color: '#FFC107',
@@ -1192,7 +1198,7 @@ function App() {
                     <div className="stat-label">成功率</div>
                   </div>
                 </Col>
-                <Col xs={12} sm={8} lg={4}>
+                <Col xs={12} sm={8} lg={4} className="stat-col">
                   <div className="stat-item">
                     <div style={{ 
                       width: 40, height: 40, borderRadius: '50%', background: '#E3F2FD', color: '#2196F3',
@@ -1204,7 +1210,7 @@ function App() {
                     <div className="stat-label">最快用时</div>
                   </div>
                 </Col>
-                <Col xs={12} sm={8} lg={4}>
+                <Col xs={12} sm={8} lg={4} className="stat-col">
                   <div className="stat-item">
                     <div style={{ 
                       width: 40, height: 40, borderRadius: '50%', background: '#FFEBEE', color: '#FF5252',
@@ -1216,7 +1222,7 @@ function App() {
                     <div className="stat-label">最慢用时</div>
                   </div>
                 </Col>
-                <Col xs={12} sm={8} lg={4}>
+                <Col xs={12} sm={8} lg={4} className="stat-col">
                   <div className="stat-item">
                     <div style={{ 
                       width: 40, height: 40, borderRadius: '50%', background: '#F3E5F5', color: '#9C27B0',
@@ -1233,7 +1239,7 @@ function App() {
           </div>
 
           {/* 任务列表 */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16, paddingLeft: 4 }}>
+          <div className="task-section-title" style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16, paddingLeft: 4 }}>
             <div style={{ 
               width: 24, height: 24, borderRadius: '50%', background: '#FF9EB5', 
               display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff',
@@ -1304,10 +1310,54 @@ function App() {
           onBackendAuthConfirm={handleBackendAuthConfirm}
         />
 
+        <nav
+          className="mobile-bottom-nav"
+          aria-label="手机端主要操作"
+          style={{
+            gridTemplateColumns: config.enableCollection
+              ? 'repeat(4, minmax(0, 1fr))'
+              : 'repeat(3, minmax(0, 1fr))',
+          }}
+        >
+          <Button
+            type="text"
+            icon={<AppstoreFilled />}
+            onClick={() => setPromptDrawerVisible(true)}
+            className="mobile-nav-action"
+          >
+            广场
+          </Button>
+          <Button
+            type="primary"
+            icon={<PlusOutlined />}
+            onClick={handleAddTask}
+            className="mobile-nav-action mobile-nav-primary"
+          >
+            新建
+          </Button>
+          {config.enableCollection && (
+            <Button
+              type="text"
+              icon={<HeartFilled />}
+              onClick={() => setCollectionVisible((visible) => !visible)}
+              className="mobile-nav-action"
+            >
+              收藏
+            </Button>
+          )}
+          <Button
+            type="text"
+            icon={<SettingFilled />}
+            onClick={() => setConfigVisible(true)}
+            className="mobile-nav-action"
+          >
+            配置
+          </Button>
+        </nav>
+
       </Layout>
     </ConfigProvider>
   );
 }
 
 export default App;
-

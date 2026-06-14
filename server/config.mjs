@@ -30,9 +30,13 @@ loadEnvFile()
 
 export const isProd = process.argv.includes('--prod')
 export const port = Number(process.env.PORT) || 5173
+export const host = process.env.HOST || '0.0.0.0'
 export const saveDir = path.resolve(rootDir, 'saved-images')
 export const distDir = path.resolve(rootDir, 'dist')
 export const serverDataDir = path.resolve(rootDir, 'server-data')
+export const backendDbPath = process.env.BACKEND_DB_PATH
+  ? path.resolve(rootDir, process.env.BACKEND_DB_PATH)
+  : path.join(serverDataDir, 'moe-atelier.sqlite')
 export const backendTasksDir = path.join(serverDataDir, 'tasks')
 export const backendImagesDir = path.join(serverDataDir, 'images')
 export const backendStatePath = path.join(serverDataDir, 'state.json')

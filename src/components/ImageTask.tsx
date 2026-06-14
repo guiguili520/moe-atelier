@@ -1869,7 +1869,7 @@ const ImageTask: React.FC<ImageTaskProps> = ({ id, storageKey, config, backendMo
 
   return (
     <div
-      className="moe-card"
+      className="moe-card image-task-card"
       style={{
         height: '100%',
         display: 'flex',
@@ -1918,7 +1918,7 @@ const ImageTask: React.FC<ImageTaskProps> = ({ id, storageKey, config, backendMo
       )}
       
       {/* Header */}
-      <div style={{ 
+      <div className="image-task-header" style={{ 
         padding: '12px 16px', 
         borderBottom: '1px solid #F0F0F0',
         display: 'flex',
@@ -1963,7 +1963,7 @@ const ImageTask: React.FC<ImageTaskProps> = ({ id, storageKey, config, backendMo
       </div>
 
       {/* Stats Bar - 紧凑设计 */}
-      <div style={{ 
+      <div className="image-task-stats" style={{ 
         padding: '12px 16px', 
         background: '#FAFAFA',
         borderBottom: '1px solid #F0F0F0',
@@ -2012,7 +2012,7 @@ const ImageTask: React.FC<ImageTaskProps> = ({ id, storageKey, config, backendMo
       />
 
       {/* Input Area */}
-      <div style={{ padding: '16px' }}>
+      <div className="image-task-input-area" style={{ padding: '16px' }}>
         <div style={{ 
           background: '#FFF0F3', 
           borderRadius: 16, 
@@ -2155,7 +2155,7 @@ const ImageTask: React.FC<ImageTaskProps> = ({ id, storageKey, config, backendMo
       </div>
 
       {/* Results Grid */}
-      <div style={{ 
+      <div className="image-task-results" style={{ 
         flex: 1, 
         overflowY: 'auto', 
         padding: '0 16px 16px',
