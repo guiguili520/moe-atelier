@@ -1,7 +1,8 @@
-const { loadProfile, clearProfile, getStats, createDefaultProfile } = require('../../utils/profile');
+const { loadProfile, saveProfile, clearProfile, getStats, createDefaultProfile } = require('../../utils/profile');
 const { loadHistory } = require('../../utils/history');
 
 const DAY = 24 * 60 * 60 * 1000;
+const AVATAR_OPTIONS = [1, 2, 3, 4, 5, 6].map((n) => `/assets/avatars/avatar-${n}.png`);
 
 const formatDate = (ts) => {
   const d = new Date(ts);
@@ -14,7 +15,11 @@ Page({
     profile: null,
     stats: { totalGenerated: 0, favorites: 0, history7d: 0 },
     history: [],
-    joinDays: 0
+    joinDays: 0,
+    editing: false,
+    draftNickname: '',
+    draftAvatar: '',
+    avatarOptions: AVATAR_OPTIONS
   },
 
   onShow() {
@@ -36,6 +41,40 @@ Page({
     wx.showToast({ title: '已登录' });
   },
 
+  startEdit() {
+    const profile = loadProfile();
+    if (!profile) return;
+    this.setData({
+      editing: true,
+      draftNickname: profile.nickname,
+      draftAvatar: profile.avatar
+    });
+  },
+
+  cancelEdit() {
+    this.setData({ editing: false });
+  },
+
+  pickAvatar(event) {
+    this.setData({ draftAvatar: event.currentTarget.dataset.src });
+  },
+
+  onNicknameInput(event) {
+    this.setData({ draftNickname: event.detail.value });
+  },
+
+  saveEdit() {
+    const nickname = String(this.data.draftNickname || '').trim();
+    if (!nickname) {
+      wx.showToast({ title: '请填写昵称', icon: 'none' });
+      return;
+    }
+    saveProfile({ avatar: this.data.draftAvatar, nickname });
+    this.setData({ editing: false });
+    this.refresh();
+    wx.showToast({ title: '已保存' });
+  },
+
   logout() {
     wx.showModal({
       title: '退出登录',
@@ -43,6 +82,7 @@ Page({
       success: (res) => {
         if (res.confirm) {
           clearProfile();
+          this.setData({ editing: false });
           this.refresh();
         }
       }

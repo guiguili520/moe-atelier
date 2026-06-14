@@ -6,6 +6,7 @@
         <view class="nickname">{{profile.nickname}}</view>
         <view class="join">已陪伴你 {{joinDays}} 天</view>
       </view>
+      <view class="edit-btn" catchtap="startEdit">编辑</view>
     </block>
     <block wx:else>
       <view class="avatar-img placeholder">游</view>
@@ -15,6 +16,21 @@
       </view>
       <view class="edit-btn primary" catchtap="login">登录</view>
     </block>
+  </view>
+
+  <view wx:if="{{editing}}" class="edit-panel">
+    <view class="edit-label">选择头像</view>
+    <view class="avatar-options">
+      <block wx:for="{{avatarOptions}}" wx:key="*this">
+        <image class="avatar-option {{draftAvatar === item ? 'active' : ''}}" src="{{item}}" mode="aspectFill" data-src="{{item}}" catchtap="pickAvatar"></image>
+      </block>
+    </view>
+    <view class="edit-label">昵称</view>
+    <input class="nickname-input" value="{{draftNickname}}" maxlength="20" placeholder="给自己起个名字" bindinput="onNicknameInput" />
+    <view class="edit-actions">
+      <view class="edit-cancel" catchtap="cancelEdit">取消</view>
+      <view class="edit-save" catchtap="saveEdit">保存</view>
+    </view>
   </view>
 
   <view class="stats-card">
