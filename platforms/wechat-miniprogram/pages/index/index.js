@@ -1,7 +1,7 @@
 const { loadConfig } = require('../../utils/settings');
 const { filterSafePrompts, flattenPromptData, hasReviewRiskContent } = require('../../utils/prompts');
 const { addHistoryImage, loadHistory } = require('../../utils/history');
-const { incrementGenerated } = require('../../utils/profile');
+const { incrementGenerated, ensureLogin } = require('../../utils/profile');
 
 const FAVORITES_KEY = 'ciyuan-huitu-favorites';
 const PAGE_SIZE = 20;
@@ -284,12 +284,14 @@ Page({
 
   toggleFavorite(event) {
     const id = event.currentTarget.dataset.id;
-    const favoriteIds = this.data.favoriteIds.includes(id)
-      ? this.data.favoriteIds.filter((item) => item !== id)
-      : [...this.data.favoriteIds, id];
-    wx.setStorageSync(FAVORITES_KEY, favoriteIds);
-    this.setData({ favoriteIds });
-    this.applyFilters();
+    ensureLogin(() => {
+      const favoriteIds = this.data.favoriteIds.includes(id)
+        ? this.data.favoriteIds.filter((item) => item !== id)
+        : [...this.data.favoriteIds, id];
+      wx.setStorageSync(FAVORITES_KEY, favoriteIds);
+      this.setData({ favoriteIds });
+      this.applyFilters();
+    });
   },
 
   openPreview(event) {
@@ -339,11 +341,11 @@ Page({
   generateCustomPrompt() {
     const promptText = this.validatePromptText(this.data.customPrompt);
     if (!promptText) return;
-    this.startGenerate({
+    ensureLogin(() => this.startGenerate({
       id: CUSTOM_GENERATE_ID,
       title: '自定义提示词',
       promptText
-    });
+    }));
   },
 
   generateFromPrompt(event) {
@@ -352,16 +354,16 @@ Page({
     if (!prompt) return;
     const promptText = this.validatePromptText(this.data.previewPromptText || prompt.content);
     if (!promptText) return;
-    this.startGenerate({
+    ensureLogin(() => this.startGenerate({
       id: prompt.id,
       title: prompt.title,
       promptText
-    });
+    }));
   },
 
   startGenOverlay() {
     wx.hideTabBar({ fail: () => {} });
-    this.setData({ genVisible: true, genPercent: 4, genTip: GEN_TIPS[0] });
+    this.setData({ genVisible: true, genPercent: 4, genTip: GEN_TIPS[0], previewVisible: false });
     let tick = 0;
     this.genTimer = setInterval(() => {
       tick += 1;
@@ -379,7 +381,7 @@ Page({
 
   stopGenOverlay() {
     if (this.genTimer) { clearInterval(this.genTimer); this.genTimer = null; }
-    this.setData({ genVisible: false, genPercent: 0 });
+    this.setData({ genVisible: false, genPercent: 0, previewVisible: false });
     wx.showTabBar({ fail: () => {} });
   },
 
@@ -443,12 +445,18 @@ Page({
           apiFormat: config.apiFormat
         }))).then((saved) => {
           const ok = saved.filter(Boolean);
-          if (ok.length) incrementGenerated(ok.length);
+          if (!ok.length) {
+            this.stopGenOverlay();
+            wx.showToast({ title: '保存失败', icon: 'none' });
+            return;
+          }
+          incrementGenerated(ok.length);
           this.setData({ resultImages: mapHistoryToResults() });
-          getApp().globalData.resultImages = ok.length
-            ? ok.map((e) => ({ filePath: e.filePath, title: e.title }))
-            : images.map((im) => ({ filePath: im.src, title: im.title }));
+          getApp().globalData.resultImages = ok.map((e) => ({ id: e.id, filePath: e.filePath, title: e.title }));
           this.finishGenAndGo();
+        }).catch(() => {
+          this.stopGenOverlay();
+          wx.showToast({ title: '保存失败', icon: 'none' });
         });
       },
       fail: (err) => {
@@ -457,7 +465,6 @@ Page({
       },
       complete: () => {
         this.setData({ generatingId: '', isGenerating: false });
-        if (this.genTimer) { clearInterval(this.genTimer); this.genTimer = null; }
       }
     });
   },
@@ -465,7 +472,18 @@ Page({
   previewImage(event) {
     const current = event.currentTarget.dataset.src;
     dataUrlToTempFile(current)
-      .then((filePath) => wx.previewImage({ current: filePath, urls: [filePath] }))
+      .then((filePath) => {
+        const isTemp = filePath !== current && String(filePath).startsWith(wx.env.USER_DATA_PATH);
+        wx.previewImage({
+          current: filePath,
+          urls: [filePath],
+          complete: () => {
+            if (isTemp) {
+              try { wx.getFileSystemManager().unlinkSync(filePath); } catch (e) {}
+            }
+          }
+        });
+      })
       .catch(() => wx.showToast({ title: '预览失败', icon: 'none' }));
   },
 

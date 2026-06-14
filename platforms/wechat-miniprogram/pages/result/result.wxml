@@ -5,7 +5,7 @@
 
   <block wx:if="{{images.length > 0}}">
     <swiper wx:if="{{multi}}" class="stage" current="{{current}}" bindchange="onSwiperChange">
-      <block wx:for="{{images}}" wx:key="filePath">
+      <block wx:for="{{images}}" wx:key="id">
         <swiper-item>
           <image class="full-img" src="{{item.filePath}}" mode="aspectFit" bindlongpress="onLongPress"></image>
         </swiper-item>

@@ -75,6 +75,24 @@ const getStats = () => {
   };
 };
 
+// 登录门禁：已登录直接放行；未登录则拉起 getUserProfile，成功后保存并放行。
+// 必须由点击手势的同步调用栈触发（getUserProfile 的手势要求）。
+const ensureLogin = (onOk) => {
+  if (loadProfile()) {
+    if (onOk) onOk();
+    return;
+  }
+  wx.getUserProfile({
+    desc: '用于展示你的头像和昵称',
+    success: (res) => {
+      const info = res.userInfo || {};
+      saveProfile({ avatar: info.avatarUrl || '', nickname: info.nickName || '微信用户' });
+      if (onOk) onOk();
+    },
+    fail: () => wx.showToast({ title: '需登录后使用', icon: 'none' })
+  });
+};
+
 module.exports = {
   PROFILE_KEY,
   STATS_KEY,
@@ -82,5 +100,6 @@ module.exports = {
   saveProfile,
   clearProfile,
   incrementGenerated,
-  getStats
+  getStats,
+  ensureLogin
 };

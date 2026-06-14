@@ -374,13 +374,14 @@
 .section-badge,
 .new-badge {
   max-width: 150rpx;
-  padding: 4rpx 12rpx;
+  padding: 6rpx 14rpx;
   border-radius: 999rpx;
   overflow: hidden;
   color: #5d4037;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: 18rpx;
+  font-size: 19rpx;
+  line-height: 1.5;
   font-weight: 900;
   background: rgba(255, 255, 255, 0.92);
   box-shadow: 0 4rpx 8rpx rgba(0, 0, 0, 0.04);

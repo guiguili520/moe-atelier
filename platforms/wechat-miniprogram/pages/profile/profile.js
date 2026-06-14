@@ -39,7 +39,7 @@ Page({
         this.refresh();
         wx.showToast({ title: '已登录' });
       },
-      fail: () => {}
+      fail: () => wx.showToast({ title: '已取消登录', icon: 'none' })
     });
   },
 

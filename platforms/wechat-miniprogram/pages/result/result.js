@@ -11,7 +11,8 @@ Page({
     const images = (app.globalData && app.globalData.resultImages) || [];
     let statusBar = 20;
     try {
-      statusBar = (wx.getWindowInfo ? wx.getWindowInfo() : wx.getSystemInfoSync()).statusBarHeight || 20;
+      const info = (wx.getWindowInfo && wx.getWindowInfo()) || (wx.getSystemInfoSync && wx.getSystemInfoSync()) || {};
+      statusBar = info.statusBarHeight || 20;
     } catch (e) {}
     this.setData({ images, multi: images.length > 1, statusBar });
   },
@@ -58,7 +59,14 @@ Page({
 
   shareImage(filePath) {
     if (wx.showShareImageMenu) {
-      wx.showShareImageMenu({ path: filePath, fail: () => {} });
+      wx.showShareImageMenu({
+        path: filePath,
+        fail: (err) => {
+          if (!String(err.errMsg || '').includes('cancel')) {
+            wx.showToast({ title: '分享失败', icon: 'none' });
+          }
+        }
+      });
     } else {
       wx.showToast({ title: '当前微信版本不支持分享图片', icon: 'none' });
     }
