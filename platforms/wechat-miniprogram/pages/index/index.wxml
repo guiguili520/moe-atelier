@@ -1,3 +1,6 @@
+<import src="index.skeleton.wxml" />
+<template is="skeleton" wx:if="{{loading}}" />
+
 <view class="page">
   <view class="topbar">
     <view class="brand">

@@ -106,6 +106,7 @@ Page({
     config: loadConfig(),
     promptSourceUrl: '',
     loadingPrompts: false,
+    loading: true,
     promptError: '',
     visiblePrompts: [],
     hasMore: false,
@@ -172,7 +173,7 @@ Page({
   fetchPrompts() {
     const sourceUrl = this.data.config.promptSourceUrl;
     if (!sourceUrl) {
-      this.setData({ promptError: '请先到配置页填写提示词数据源', showEmpty: false, showGrid: false });
+      this.setData({ promptError: '请先到配置页填写提示词数据源', showEmpty: false, showGrid: false, loading: false });
       return;
     }
 
@@ -197,7 +198,7 @@ Page({
         this.setData({ promptError: err.errMsg || '提示词加载失败，请检查请求域名配置', showEmpty: false, showGrid: false });
       },
       complete: () => {
-        this.setData({ loadingPrompts: false });
+        this.setData({ loadingPrompts: false, loading: false });
       }
     });
   },
