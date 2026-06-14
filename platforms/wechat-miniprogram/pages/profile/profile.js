@@ -1,4 +1,4 @@
-const { loadProfile, saveProfile, clearProfile, getStats } = require('../../utils/profile');
+const { loadProfile, clearProfile, getStats, createDefaultProfile } = require('../../utils/profile');
 const { loadHistory } = require('../../utils/history');
 
 const DAY = 24 * 60 * 60 * 1000;
@@ -29,18 +29,11 @@ Page({
     this.setData({ profile, history, stats, joinDays });
   },
 
-  // 一键登录：弹窗确认后直接赋值（微信新策略下多为默认头像/昵称）。
+  // 一键登录：本地生成随机可爱头像+昵称（不再用已废弃且报错的 getUserProfile）。
   login() {
-    wx.getUserProfile({
-      desc: '用于展示你的头像和昵称',
-      success: (res) => {
-        const info = res.userInfo || {};
-        saveProfile({ avatar: info.avatarUrl || '', nickname: info.nickName || '微信用户' });
-        this.refresh();
-        wx.showToast({ title: '已登录' });
-      },
-      fail: () => wx.showToast({ title: '已取消登录', icon: 'none' })
-    });
+    createDefaultProfile();
+    this.refresh();
+    wx.showToast({ title: '已登录' });
   },
 
   logout() {

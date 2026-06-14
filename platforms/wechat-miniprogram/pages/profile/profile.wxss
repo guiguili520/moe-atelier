@@ -3,7 +3,7 @@
   box-sizing: border-box;
   display: flex;
   flex-direction: column;
-  padding: 24rpx 22rpx calc(env(safe-area-inset-bottom) + 32rpx);
+  padding: 24rpx 22rpx calc(env(safe-area-inset-bottom) + 12rpx);
   color: #5d4037;
   background-color: #fff9fa;
   background-image:

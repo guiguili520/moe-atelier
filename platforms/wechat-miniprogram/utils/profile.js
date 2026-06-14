@@ -16,7 +16,8 @@ const loadProfile = () => {
 const persistAvatar = (avatarUrl) => {
   if (!avatarUrl) return '';
   if (String(avatarUrl).startsWith(userDir())) return avatarUrl;
-  if (/^https?:\/\//.test(String(avatarUrl))) return avatarUrl; // 远程头像（如微信返回）直接存 URL
+  if (/^https?:\/\//.test(String(avatarUrl))) return avatarUrl; // 远程头像直接存 URL
+  if (String(avatarUrl).startsWith('/')) return avatarUrl; // 包内资源路径（/assets/...）直接存
   const old = wx.getStorageSync(PROFILE_KEY);
   const oldAvatar = (old && old.avatar) || '';
   const ext = (String(avatarUrl).match(/\.([a-z0-9]+)$/i) || [null, 'png'])[1];
@@ -75,21 +76,36 @@ const getStats = () => {
   };
 };
 
-// 登录门禁：已登录直接放行；未登录则拉起 getUserProfile，成功后保存并放行。
-// 必须由点击手势的同步调用栈触发（getUserProfile 的手势要求）。
+const CUTE_NICKNAMES = [
+  '元气小画家', '次元绘师', '魔法绘师', '脑洞艺术家', '调色盘精灵',
+  '梦境画手', '像素小可爱', '灵感收集者', '二次元画伯', '彩虹涂鸦家'
+];
+const AVATAR_COUNT = 6;
+
+// 本地一键创建可爱身份（随机头像+昵称），不依赖 wx.getUserProfile（已废弃且常报错）。
+const createDefaultProfile = () => {
+  const name = CUTE_NICKNAMES[Math.floor(Math.random() * CUTE_NICKNAMES.length)];
+  const nickname = `${name}${Math.floor(1000 + Math.random() * 9000)}`;
+  const avatar = `/assets/avatars/avatar-${1 + Math.floor(Math.random() * AVATAR_COUNT)}.png`;
+  return saveProfile({ avatar, nickname });
+};
+
+// 登录门禁：已登录直接放行；未登录弹确认框，一键创建本地可爱身份后放行。
 const ensureLogin = (onOk) => {
   if (loadProfile()) {
     if (onOk) onOk();
     return;
   }
-  wx.getUserProfile({
-    desc: '用于展示你的头像和昵称',
+  wx.showModal({
+    title: '一键登录',
+    content: '登录后即可使用收藏、生成等功能，会随机分配一个可爱头像和昵称～',
+    confirmText: '一键登录',
     success: (res) => {
-      const info = res.userInfo || {};
-      saveProfile({ avatar: info.avatarUrl || '', nickname: info.nickName || '微信用户' });
-      if (onOk) onOk();
-    },
-    fail: () => wx.showToast({ title: '需登录后使用', icon: 'none' })
+      if (res.confirm) {
+        createDefaultProfile();
+        if (onOk) onOk();
+      }
+    }
   });
 };
 
@@ -101,5 +117,6 @@ module.exports = {
   clearProfile,
   incrementGenerated,
   getStats,
-  ensureLogin
+  ensureLogin,
+  createDefaultProfile
 };

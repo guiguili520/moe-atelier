@@ -13,6 +13,7 @@
     "build": "tsc && vite build",
     "miniapp:wechat:check": "node scripts/validate-wechat-miniprogram.mjs",
     "miniapp:tabbar:icons": "node scripts/generate-miniprogram-tabbar-icons.mjs",
+    "miniapp:avatars": "node scripts/generate-miniprogram-avatars.mjs",
     "pwa:icons": "node scripts/generate-pwa-icons.mjs",
     "preview": "node server.mjs --prod",
     "start": "node server.mjs --prod"
