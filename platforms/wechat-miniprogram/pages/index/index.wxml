@@ -31,9 +31,9 @@
         <view class="panel-kicker">自由创作</view>
         <view class="panel-title">自定义生图</view>
       </view>
-      <button class="custom-generate-btn" loading="{{generatingId === 'custom'}}" catchtap="generateCustomPrompt">
+      <view class="custom-generate-btn" catchtap="generateCustomPrompt">
         {{generatingId === 'custom' ? '生成中' : '生成'}}
-      </button>
+      </view>
     </view>
     <textarea
       class="custom-textarea"
