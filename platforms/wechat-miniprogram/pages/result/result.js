@@ -30,12 +30,25 @@ Page({
     const path = this.currentPath();
     if (!path) return;
     wx.showActionSheet({
-      itemList: ['保存到相册', '分享图片'],
+      itemList: ['保存到相册', '分享图片', '以此图再编辑'],
       success: (res) => {
         if (res.tapIndex === 0) this.saveToAlbum(path);
         else if (res.tapIndex === 1) this.shareImage(path);
+        else if (res.tapIndex === 2) this.editFromImage(path);
       }
     });
+  },
+
+  editFromImage(filePath) {
+    try {
+      const ext = (String(filePath).match(/\.([a-z0-9]+)$/i) || [null, 'png'])[1].toLowerCase();
+      const mime = (ext === 'jpg' || ext === 'jpeg') ? 'image/jpeg' : (ext === 'webp' ? 'image/webp' : 'image/png');
+      const base64 = wx.getFileSystemManager().readFileSync(filePath, 'base64');
+      getApp().globalData.pendingReference = `data:${mime};base64,${base64}`;
+      wx.switchTab({ url: '/pages/index/index' });
+    } catch (e) {
+      wx.showToast({ title: '操作失败', icon: 'none' });
+    }
   },
 
   saveToAlbum(filePath) {

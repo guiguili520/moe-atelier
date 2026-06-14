@@ -196,6 +196,58 @@
   background: #ffffff;
 }
 
+.ref-row {
+  display: flex;
+  align-items: center;
+  margin-top: 14rpx;
+}
+
+.ref-add {
+  padding: 10rpx 22rpx;
+  border: 2rpx dashed #ffc2d1;
+  border-radius: 16rpx;
+  color: #8d6e63;
+  font-size: 23rpx;
+  font-weight: 800;
+  background: #fff9fa;
+}
+
+.ref-thumb-wrap {
+  position: relative;
+  width: 96rpx;
+  height: 96rpx;
+  margin-right: 14rpx;
+}
+
+.ref-thumb {
+  width: 96rpx;
+  height: 96rpx;
+  border-radius: 14rpx;
+  border: 2rpx solid #ffe5ec;
+  background: #ffe5ec;
+}
+
+.ref-remove {
+  position: absolute;
+  right: -10rpx;
+  top: -10rpx;
+  width: 36rpx;
+  height: 36rpx;
+  border-radius: 50%;
+  color: #ffffff;
+  text-align: center;
+  line-height: 36rpx;
+  font-size: 26rpx;
+  background: #ff7a90;
+}
+
+.ref-hint {
+  flex: 1;
+  color: #8d6e63;
+  font-size: 22rpx;
+  font-weight: 700;
+}
+
 .category-scroll {
   width: 100%;
   margin-bottom: 18rpx;

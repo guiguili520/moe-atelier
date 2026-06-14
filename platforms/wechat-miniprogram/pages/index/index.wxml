@@ -48,6 +48,16 @@
       placeholder="输入你想生成的画面提示词..."
       bindinput="handleCustomPromptInput"
     />
+    <view class="ref-row">
+      <block wx:if="{{customReference}}">
+        <view class="ref-thumb-wrap">
+          <image class="ref-thumb" src="{{customReference}}" mode="aspectFill"></image>
+          <view class="ref-remove" catchtap="removeReference" data-target="customReference">×</view>
+        </view>
+        <text class="ref-hint">参考图已添加 · 将基于它生成</text>
+      </block>
+      <view wx:else class="ref-add" catchtap="chooseReference" data-target="customReference">+ 添加参考图（图生图，可选）</view>
+    </view>
   </view>
 
   <scroll-view class="category-scroll" scroll-x enhanced show-scrollbar="{{false}}">
@@ -161,6 +171,16 @@
             placeholder="修改提示词后再生成..."
             bindinput="handlePreviewPromptInput"
           />
+          <view class="ref-row">
+            <block wx:if="{{previewReference}}">
+              <view class="ref-thumb-wrap">
+                <image class="ref-thumb" src="{{previewReference}}" mode="aspectFill"></image>
+                <view class="ref-remove" catchtap="removeReference" data-target="previewReference">×</view>
+              </view>
+              <text class="ref-hint">参考图已添加 · 将基于它生成</text>
+            </block>
+            <view wx:else class="ref-add" catchtap="chooseReference" data-target="previewReference">+ 添加参考图（图生图，可选）</view>
+          </view>
           <view wx:if="{{previewPrompt.notes}}" class="note-text">{{previewPrompt.notes}}</view>
         </view>
       </scroll-view>

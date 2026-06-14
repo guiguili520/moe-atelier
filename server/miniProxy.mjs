@@ -3,6 +3,18 @@
 
 const normalizeBaseUrl = (value) => String(value || '').replace(/\/+$/, '')
 
+const extFromMime = (mime) => {
+  if (!mime) return 'png'
+  if (mime.includes('jpeg') || mime.includes('jpg')) return 'jpg'
+  if (mime.includes('webp')) return 'webp'
+  return (mime.split('/')[1] || 'png').replace(/[^a-z0-9]/gi, '') || 'png'
+}
+
+const parseImageDataUrl = (dataUrl) => {
+  const m = String(dataUrl || '').match(/^data:(image\/[a-zA-Z0-9.+-]+);base64,(.+)$/)
+  return m ? { mime: m[1], base64: m[2] } : null
+}
+
 // 轻量 SSRF 防护：拒绝回环 / 内网 / 云元数据等目标（按字面 host，不做 DNS 解析）。
 const assertSafeTarget = (urlStr) => {
   let host
@@ -34,10 +46,12 @@ const resolveGenerateUrl = (config) => {
   return `${base}/images/generations`
 }
 
-const buildRequest = (config, prompt) => {
+const buildRequest = (config, prompt, image) => {
   if (config.apiFormat === 'gemini') {
+    const parts = [{ text: prompt }]
+    if (image) parts.push({ inlineData: { mimeType: image.mime, data: image.base64 } })
     return {
-      contents: [{ role: 'user', parts: [{ text: prompt }] }],
+      contents: [{ role: 'user', parts }],
       generationConfig: { responseModalities: ['TEXT', 'IMAGE'] },
     }
   }
@@ -90,7 +104,7 @@ const parseJsonSafe = (text) => {
   }
 }
 
-export const proxyGenerate = async ({ apiUrl, apiKey, apiFormat, model, prompt, size }) => {
+export const proxyGenerate = async ({ apiUrl, apiKey, apiFormat, model, prompt, size, image }) => {
   if (!apiUrl || !apiKey || !model) throw new Error('缺少 apiUrl/apiKey/model')
   if (!prompt) throw new Error('缺少提示词')
   const config = {
@@ -100,16 +114,38 @@ export const proxyGenerate = async ({ apiUrl, apiKey, apiFormat, model, prompt, 
     model,
     size: size || '1024x1024',
   }
-  const url = resolveGenerateUrl(config)
-  assertSafeTarget(url)
-  const headers = { 'content-type': 'application/json' }
-  if (config.apiFormat === 'openai') headers.Authorization = `Bearer ${config.apiKey}`
+  const img = image ? parseImageDataUrl(image) : null
+  if (image && !img) throw new Error('参考图格式不正确')
 
-  const resp = await fetch(url, {
-    method: 'POST',
-    headers,
-    body: JSON.stringify(buildRequest(config, prompt)),
-  })
+  let resp
+  if (config.apiFormat !== 'gemini' && img) {
+    // OpenAI 图生图：走 /images/edits 的 multipart/form-data
+    const base = normalizeBaseUrl(config.apiUrl)
+    const hasVersion = /\/v\d+(beta|alpha)?(\/|$)/.test(base)
+    const editsUrl = hasVersion ? `${base}/images/edits` : `${base}/v1/images/edits`
+    assertSafeTarget(editsUrl)
+    const fd = new FormData()
+    fd.append('model', config.model)
+    fd.append('prompt', prompt)
+    fd.append('size', config.size)
+    fd.append('n', '1')
+    fd.append('image', new Blob([Buffer.from(img.base64, 'base64')], { type: img.mime }), `image.${extFromMime(img.mime)}`)
+    resp = await fetch(editsUrl, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${config.apiKey}` },
+      body: fd,
+    })
+  } else {
+    const url = resolveGenerateUrl(config)
+    assertSafeTarget(url)
+    const headers = { 'content-type': 'application/json' }
+    if (config.apiFormat === 'openai') headers.Authorization = `Bearer ${config.apiKey}`
+    resp = await fetch(url, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(buildRequest(config, prompt, img)),
+    })
+  }
   const text = await resp.text()
   const body = parseJsonSafe(text)
   if (!resp.ok) {

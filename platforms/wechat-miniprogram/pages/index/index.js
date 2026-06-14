@@ -121,6 +121,8 @@ Page({
     previewPrompt: null,
     previewPromptText: '',
     customPrompt: '',
+    customReference: '',
+    previewReference: '',
     generatingId: '',
     isGenerating: false,
     resultImages: [],
@@ -146,6 +148,11 @@ Page({
   },
 
   onShow() {
+    const app = getApp();
+    if (app.globalData && app.globalData.pendingReference) {
+      this.setData({ customReference: app.globalData.pendingReference });
+      app.globalData.pendingReference = '';
+    }
     // 首次进入：完整加载；tab 返回：只刷新「最近生成」，不重渲染整个网格（避免切 tab 卡顿）。
     if ((this._allPrompts || []).length === 0) {
       const config = loadConfig();
@@ -308,6 +315,7 @@ Page({
     this.setData({
       previewVisible: true,
       previewPromptText: prompt.content,
+      previewReference: '',
       previewPrompt: {
         ...prompt,
         favorite: this.data.favoriteIds.includes(prompt.id),
@@ -351,8 +359,48 @@ Page({
     ensureLogin(() => this.startGenerate({
       id: CUSTOM_GENERATE_ID,
       title: '自定义提示词',
-      promptText
+      promptText,
+      referenceImage: this.data.customReference
     }));
+  },
+
+  // 选参考图，data-target 指定写到哪个字段(customReference / previewReference)。
+  chooseReference(event) {
+    const target = (event && event.currentTarget && event.currentTarget.dataset.target) || 'customReference';
+    wx.chooseMedia({
+      count: 1,
+      mediaType: ['image'],
+      sizeType: ['compressed'],
+      sourceType: ['album', 'camera'],
+      success: (res) => {
+        const file = res.tempFiles && res.tempFiles[0];
+        if (!file || !file.tempFilePath) return;
+        wx.compressImage({
+          src: file.tempFilePath,
+          quality: 75,
+          success: (c) => this.readReference(c.tempFilePath, target),
+          fail: () => this.readReference(file.tempFilePath, target)
+        });
+      },
+      fail: () => {}
+    });
+  },
+
+  readReference(path, target) {
+    const key = target || 'customReference';
+    const ext = (String(path).match(/\.([a-z0-9]+)$/i) || [null, 'png'])[1].toLowerCase();
+    const mime = (ext === 'jpg' || ext === 'jpeg') ? 'image/jpeg' : (ext === 'webp' ? 'image/webp' : 'image/png');
+    try {
+      const base64 = wx.getFileSystemManager().readFileSync(path, 'base64');
+      this.setData({ [key]: `data:${mime};base64,${base64}` });
+    } catch (e) {
+      wx.showToast({ title: '读取参考图失败', icon: 'none' });
+    }
+  },
+
+  removeReference(event) {
+    const target = (event && event.currentTarget && event.currentTarget.dataset.target) || 'customReference';
+    this.setData({ [target]: '' });
   },
 
   generateFromPrompt(event) {
@@ -364,7 +412,8 @@ Page({
     ensureLogin(() => this.startGenerate({
       id: prompt.id,
       title: prompt.title,
-      promptText
+      promptText,
+      referenceImage: this.data.previewReference
     }));
   },
 
@@ -404,7 +453,7 @@ Page({
 
   noop() {},
 
-  startGenerate({ id, title, promptText }) {
+  startGenerate({ id, title, promptText, referenceImage }) {
     if (this.data.isGenerating) {
       wx.showToast({ title: '上一张还在生成中', icon: 'none' });
       return;
@@ -416,20 +465,22 @@ Page({
       return;
     }
 
+    const payload = {
+      apiUrl: config.apiUrl,
+      apiKey: config.apiKey,
+      apiFormat: config.apiFormat,
+      model: config.model,
+      prompt: promptText,
+      size: config.size
+    };
+    if (referenceImage) payload.image = referenceImage;
     this.setData({ generatingId: id, isGenerating: true });
     this.startGenOverlay();
     wx.request({
       url: `${PROXY_BASE}/api/proxy/generate`,
       method: 'POST',
       header: { 'content-type': 'application/json' },
-      data: {
-        apiUrl: config.apiUrl,
-        apiKey: config.apiKey,
-        apiFormat: config.apiFormat,
-        model: config.model,
-        prompt: promptText,
-        size: config.size
-      },
+      data: payload,
       timeout: GENERATE_TIMEOUT,
       success: (res) => {
         if (res.statusCode < 200 || res.statusCode >= 300) {
