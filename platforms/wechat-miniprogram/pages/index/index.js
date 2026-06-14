@@ -1,4 +1,4 @@
-const { loadConfig } = require('../../utils/settings');
+const { loadConfig, PROXY_BASE } = require('../../utils/settings');
 const { filterSafePrompts, flattenPromptData, hasReviewRiskContent } = require('../../utils/prompts');
 const { addHistoryImage, loadHistory } = require('../../utils/history');
 const { incrementGenerated, ensureLogin } = require('../../utils/profile');
@@ -412,29 +412,30 @@ Page({
       return;
     }
 
-    const headers = { 'content-type': 'application/json' };
-    if (config.apiFormat === 'openai') headers.Authorization = `Bearer ${config.apiKey}`;
     this.setData({ generatingId: id, isGenerating: true });
     this.startGenOverlay();
     wx.request({
-      url: resolveGenerateUrl(config),
+      url: `${PROXY_BASE}/api/proxy/generate`,
       method: 'POST',
-      header: headers,
-      data: buildRequest(config, promptText),
+      header: { 'content-type': 'application/json' },
+      data: {
+        apiUrl: config.apiUrl,
+        apiKey: config.apiKey,
+        apiFormat: config.apiFormat,
+        model: config.model,
+        prompt: promptText,
+        size: config.size
+      },
       timeout: GENERATE_TIMEOUT,
       success: (res) => {
         if (res.statusCode < 200 || res.statusCode >= 300) {
-          const message = res.data?.error?.message || res.data?.message || `请求失败：${res.statusCode}`;
+          const message = res.data?.error || res.data?.message || `请求失败：${res.statusCode}`;
           this.stopGenOverlay();
           wx.showToast({ title: message, icon: 'none' });
           return;
         }
-        const images = extractImages(res.data, config.apiFormat).map((image) => ({
-          ...image,
-          promptId: id,
-          title,
-          prompt: promptText
-        }));
+        const list = Array.isArray(res.data && res.data.images) ? res.data.images : [];
+        const images = list.map((src, i) => ({ id: `${Date.now()}-${i}`, src, promptId: id, title, prompt: promptText }));
         if (!images.length) {
           this.stopGenOverlay();
           wx.showToast({ title: '没有解析到图片', icon: 'none' });

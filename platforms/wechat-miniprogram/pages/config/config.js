@@ -4,7 +4,8 @@ const {
   getFormatIndex,
   getSizeIndex,
   loadConfig,
-  saveConfig
+  saveConfig,
+  PROXY_BASE
 } = require('../../utils/settings');
 const { ensureLogin } = require('../../utils/profile');
 
@@ -139,40 +140,19 @@ Page({
   fetchModels() {
     const { apiUrl, apiKey, apiFormat } = this.data.config;
     if (!apiUrl || !apiKey) return;
-    const base = normalizeBaseUrl(apiUrl);
-    const hasVersion = /\/v\d+(beta|alpha)?(\/|$)/.test(base);
-    let url = '';
-    const header = {};
-    if (apiFormat === 'gemini') {
-      const verBase = hasVersion ? base : `${base}/v1beta`;
-      const host = base.split('/')[2] || '';
-      if (host === 'generativelanguage.googleapis.com') {
-        url = `${verBase}/models?key=${encodeURIComponent(apiKey)}`;
-      } else {
-        url = `${verBase}/models`;
-        header.Authorization = `Bearer ${apiKey}`;
-      }
-    } else {
-      url = hasVersion ? `${base}/models` : `${base}/v1/models`;
-      header.Authorization = `Bearer ${apiKey}`;
-    }
     this.setData({ loadingModels: true });
     wx.request({
-      url,
-      method: 'GET',
-      header,
+      url: `${PROXY_BASE}/api/proxy/models`,
+      method: 'POST',
+      header: { 'content-type': 'application/json' },
+      data: { apiUrl, apiKey, apiFormat },
       timeout: 20000,
       success: (res) => {
         if (res.statusCode < 200 || res.statusCode >= 300) {
           this.setData({ loadingModels: false });
           return;
         }
-        const body = res.data || {};
-        const rawList = Array.isArray(body.data)
-          ? body.data
-          : (Array.isArray(body.models) ? body.models : []);
-        const ids = rawList.map((m) => String((m && (m.id || m.name)) || '').replace(/^models\//, ''));
-        const allModels = uniqueStrings(ids);
+        const allModels = uniqueStrings(Array.isArray(res.data && res.data.models) ? res.data.models : []);
         this.setData({
           allModels,
           models: this.applyModelFilter(allModels),

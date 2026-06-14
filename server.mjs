@@ -6,8 +6,8 @@ import {
   backendImagesDir,
   backendLogRequests,
   backendPassword,
-  backendTasksDir,
   distDir,
+  host,
   isProd,
   port,
   rootDir,
@@ -26,6 +26,8 @@ import {
 import { addSseClient, removeSseClient, sendSseEvent } from './server/sse.mjs'
 import {
   createDefaultTaskState,
+  deleteTaskState,
+  listBackendTaskIds,
   loadBackendCollection,
   loadBackendState,
   loadTaskState,
@@ -37,6 +39,8 @@ import {
 } from './server/storage.mjs'
 import { parseMarkdownImage, resolveImageFromResponse } from './server/imageParser.mjs'
 import { getMimeFromFilename, saveBackendImageBuffer, saveImageBuffer } from './server/imageStore.mjs'
+import { filterPromptManagerPayload } from './server/contentModeration.mjs'
+import { proxyGenerate, proxyModels } from './server/miniProxy.mjs'
 
 const readRequestBody = async (req) => {
   const chunks = []
@@ -89,8 +93,6 @@ const getCollectionImageKey = (item) => {
   return key ? path.basename(String(key)) : ''
 }
 
-const getTaskFilePath = (taskId) => path.join(backendTasksDir, `${taskId}.json`)
-
 const collectImageKeysFromCollection = (items) => {
   const keys = new Set()
   if (!Array.isArray(items)) return keys
@@ -102,21 +104,9 @@ const collectImageKeysFromCollection = (items) => {
   return keys
 }
 
-const listTaskIds = async () => {
-  try {
-    const entries = await fs.promises.readdir(backendTasksDir, { withFileTypes: true })
-    return entries
-      .filter((entry) => entry.isFile() && entry.name.endsWith('.json'))
-      .map((entry) => path.basename(entry.name, '.json'))
-  } catch (err) {
-    if (err && err.code === 'ENOENT') return []
-    throw err
-  }
-}
-
 const collectAllReferencedImageKeys = async () => {
   const keys = new Set()
-  const taskIds = await listTaskIds()
+  const taskIds = await listBackendTaskIds()
   for (const taskId of taskIds) {
     const taskState = await loadTaskState(taskId)
     if (!taskState) continue
@@ -996,10 +986,27 @@ app.get('/api/prompt-manager', async (_req, res) => {
       return
     }
     const data = await response.json()
-    res.json(data)
+    res.json(filterPromptManagerPayload(data))
   } catch (err) {
     console.error('prompt-manager proxy error:', err)
     res.status(500).json({ error: 'Proxy Error' })
+  }
+})
+
+// 微信小程序中转代理（公开，无需后端鉴权）：绕开小程序域名白名单，服务端转发到用户自定义 API。
+app.post('/api/proxy/generate', async (req, res) => {
+  try {
+    res.json(await proxyGenerate(req.body || {}))
+  } catch (err) {
+    res.status(502).json({ error: err?.message || '生成失败' })
+  }
+})
+
+app.post('/api/proxy/models', async (req, res) => {
+  try {
+    res.json(await proxyModels(req.body || {}))
+  } catch (err) {
+    res.status(502).json({ error: err?.message || '获取模型失败' })
   }
 })
 
@@ -1211,7 +1218,7 @@ app.delete('/api/backend/task/:id', requireBackendAuth, async (req, res) => {
         clearRetryTimer(result.id)
       })
     }
-    await fs.promises.unlink(getTaskFilePath(req.params.id)).catch(() => undefined)
+    await deleteTaskState(req.params.id)
     const state = await loadBackendState()
     const next = {
       ...state,
@@ -1389,8 +1396,6 @@ if (isProd) {
   })
 }
 
-app.listen(port, () => {
-  console.log(`[server] http://localhost:${port} (${isProd ? 'prod' : 'dev'})`)
+app.listen(port, host, () => {
+  console.log(`[server] http://${host}:${port} (${isProd ? 'prod' : 'dev'})`)
 })
-
-
