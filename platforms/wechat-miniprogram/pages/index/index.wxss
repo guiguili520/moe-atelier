@@ -324,6 +324,8 @@
 
 .prompt-card {
   box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
   width: 344rpx;
   margin-bottom: 18rpx;
   overflow: hidden;
@@ -337,6 +339,7 @@
   position: relative;
   width: 100%;
   height: 0;
+  flex-shrink: 0;
   padding-bottom: 100%;
   overflow: hidden;
   background: #fafafa;
@@ -423,6 +426,9 @@
 }
 
 .card-body {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
   padding: 14rpx 16rpx 16rpx;
 }
 
@@ -442,6 +448,11 @@
   display: flex;
   flex-wrap: wrap;
   margin-top: 8rpx;
+}
+
+.tag-row {
+  height: 36rpx;
+  overflow: hidden;
 }
 
 .tag {
@@ -473,7 +484,8 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-top: 12rpx;
+  margin-top: auto;
+  padding-top: 12rpx;
 }
 
 .author {
