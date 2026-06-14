@@ -146,24 +146,28 @@ Page({
   },
 
   onShow() {
-    const config = loadConfig();
-    this.setData({
-      config,
-      promptSourceUrl: config.promptSourceUrl,
-      favoriteIds: wx.getStorageSync(FAVORITES_KEY) || [],
-      resultImages: mapHistoryToResults()
-    });
-    // 提示词源已锁定，不会变化；仅在尚未加载到提示词时拉取，其余情况只重算筛选。
+    // 首次进入：完整加载；tab 返回：只刷新「最近生成」，不重渲染整个网格（避免切 tab 卡顿）。
     if ((this._allPrompts || []).length === 0) {
-      this.fetchPrompts();
+      const config = loadConfig();
+      this.setData({
+        config,
+        promptSourceUrl: config.promptSourceUrl,
+        favoriteIds: wx.getStorageSync(FAVORITES_KEY) || [],
+        resultImages: mapHistoryToResults()
+      });
+      if (!this.data.loadingPrompts) this.fetchPrompts();
     } else {
-      this.applyFilters();
+      this.setData({ resultImages: mapHistoryToResults() });
     }
   },
 
   onHide() {
-    if (this.genTimer) { clearInterval(this.genTimer); this.genTimer = null; }
-    wx.showTabBar({ fail: () => {} });
+    // 仅在生成中（曾隐藏 tabBar）才恢复，避免每次切 tab 都调用 showTabBar 造成卡顿。
+    if (this.genTimer) {
+      clearInterval(this.genTimer);
+      this.genTimer = null;
+      wx.showTabBar({ fail: () => {} });
+    }
   },
 
   onUnload() {

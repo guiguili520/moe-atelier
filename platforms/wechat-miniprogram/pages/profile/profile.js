@@ -28,8 +28,13 @@ Page({
 
   refresh() {
     const profile = loadProfile();
-    const history = loadHistory().map((item) => ({ id: item.id, filePath: item.filePath, dateLabel: formatDate(item.createdAt) }));
+    const rawHistory = loadHistory();
     const stats = getStats();
+    // 无变化（纯切 tab）就跳过重渲染，避免每次切到「我的」都重排历史网格。
+    const sig = `${rawHistory.length}:${(rawHistory[0] && rawHistory[0].id) || ''}:${stats.totalGenerated}:${stats.favorites}:${profile ? profile.nickname + profile.avatar : 'guest'}`;
+    if (sig === this._lastSig) return;
+    this._lastSig = sig;
+    const history = rawHistory.map((item) => ({ id: item.id, filePath: item.filePath, dateLabel: formatDate(item.createdAt) }));
     const joinDays = profile ? Math.max(1, Math.floor((Date.now() - profile.createdAt) / DAY) + 1) : 0;
     this.setData({ profile, history, stats, joinDays });
   },
