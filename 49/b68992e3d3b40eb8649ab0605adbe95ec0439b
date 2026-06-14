@@ -1,0 +1,19 @@
+.gitignore
+  s_5a1db90f202aef::t_d7ad0ecabf9bbf 5-7
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.6",
+  "base_commit_sha": "49b68992e3d3b40eb8649ab0605adbe95ec0439b",
+  "prompts": {},
+  "sessions": {
+    "s_5a1db90f202aef": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bb61149b-e778-4c84-8db3-d37a7194d81b",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "xiaofei <1980028437@qq.com>"
+    }
+  }
+}
