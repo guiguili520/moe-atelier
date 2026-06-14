@@ -1,4 +1,7 @@
 node_modules/
+dist/
 saved-images/
 server-data/
-# .env
+.env
+.DS_Store
+project.private.config.json
