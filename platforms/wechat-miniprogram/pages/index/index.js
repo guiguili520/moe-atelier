@@ -107,8 +107,6 @@ Page({
     promptSourceUrl: '',
     loadingPrompts: false,
     promptError: '',
-    allPrompts: [],
-    filteredPrompts: [],
     visiblePrompts: [],
     hasMore: false,
     showEmpty: false,
@@ -131,6 +129,9 @@ Page({
   },
 
   onLoad() {
+    // 大数组放实例属性，不进 data，避免 setData 序列化数百条记录导致卡顿。
+    this._allPrompts = [];
+    this._filteredPrompts = [];
     const config = loadConfig();
     const favoriteIds = wx.getStorageSync(FAVORITES_KEY) || [];
     const resultImages = mapHistoryToResults();
@@ -152,7 +153,7 @@ Page({
       resultImages: mapHistoryToResults()
     });
     // 提示词源已锁定，不会变化；仅在尚未加载到提示词时拉取，其余情况只重算筛选。
-    if (this.data.allPrompts.length === 0) {
+    if ((this._allPrompts || []).length === 0) {
       this.fetchPrompts();
     } else {
       this.applyFilters();
@@ -185,9 +186,8 @@ Page({
           this.setData({ promptError: `提示词加载失败：${res.statusCode}`, showEmpty: false, showGrid: false });
           return;
         }
-        const allPrompts = filterSafePrompts(flattenPromptData(res.data));
+        this._allPrompts = filterSafePrompts(flattenPromptData(res.data));
         this.setData({
-          allPrompts,
           page: 1,
           activeCategory: 'all'
         });
@@ -222,7 +222,8 @@ Page({
   },
 
   applyFilters() {
-    const { allPrompts, activeCategory, searchText, favoriteIds, page } = this.data;
+    const allPrompts = this._allPrompts || [];
+    const { activeCategory, searchText, favoriteIds, page } = this.data;
     const keyword = searchText.trim().toLowerCase();
     let filtered = allPrompts;
     if (activeCategory === 'new') {
@@ -248,9 +249,9 @@ Page({
       favorite: favoriteSet.has(item.id),
       displayTags: (item.tags || []).slice(0, 3)
     }));
+    this._filteredPrompts = withState;
     this.setData({
       categories: this.buildCategories(allPrompts),
-      filteredPrompts: withState,
       visiblePrompts: decorateVisiblePrompts(withState.slice(0, page * PAGE_SIZE)),
       hasMore: withState.length > page * PAGE_SIZE,
       showEmpty: withState.length === 0 && !this.data.promptError,
@@ -275,10 +276,11 @@ Page({
 
   loadMore() {
     const nextPage = this.data.page + 1;
+    const filtered = this._filteredPrompts || [];
     this.setData({
       page: nextPage,
-      visiblePrompts: decorateVisiblePrompts(this.data.filteredPrompts.slice(0, nextPage * PAGE_SIZE)),
-      hasMore: this.data.filteredPrompts.length > nextPage * PAGE_SIZE
+      visiblePrompts: decorateVisiblePrompts(filtered.slice(0, nextPage * PAGE_SIZE)),
+      hasMore: filtered.length > nextPage * PAGE_SIZE
     });
   },
 
@@ -296,7 +298,7 @@ Page({
 
   openPreview(event) {
     const id = event.currentTarget.dataset.id;
-    const prompt = this.data.allPrompts.find((item) => item.id === id);
+    const prompt = (this._allPrompts || []).find((item) => item.id === id);
     if (!prompt) return;
     this.setData({
       previewVisible: true,
@@ -350,7 +352,7 @@ Page({
 
   generateFromPrompt(event) {
     const id = event.currentTarget.dataset.id || this.data.previewPrompt?.id;
-    const prompt = this.data.allPrompts.find((item) => item.id === id) || this.data.previewPrompt;
+    const prompt = (this._allPrompts || []).find((item) => item.id === id) || this.data.previewPrompt;
     if (!prompt) return;
     const promptText = this.validatePromptText(this.data.previewPromptText || prompt.content);
     if (!promptText) return;

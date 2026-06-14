@@ -68,7 +68,7 @@
     <scroll-view class="recent-scroll" scroll-x enhanced show-scrollbar="{{false}}">
       <view class="recent-list">
         <block wx:for="{{resultImages}}" wx:key="id">
-          <image class="recent-image" mode="aspectFill" src="{{item.src}}" data-src="{{item.src}}" bindtap="previewImage" />
+          <image class="recent-image" mode="aspectFill" lazy-load src="{{item.src}}" data-src="{{item.src}}" bindtap="previewImage" />
         </block>
       </view>
     </scroll-view>
@@ -91,7 +91,7 @@
     <block wx:for="{{visiblePrompts}}" wx:key="id">
       <view class="prompt-card {{item.cardSide}}" data-id="{{item.id}}" bindtap="openPreview">
         <view class="image-wrap">
-          <image wx:if="{{item.image}}" class="prompt-image" mode="aspectFill" src="{{item.image}}" />
+          <image wx:if="{{item.image}}" class="prompt-image" mode="aspectFill" lazy-load src="{{item.image}}" />
           <view wx:else class="image-placeholder">文</view>
 
           <view class="image-badges">

@@ -28,7 +28,7 @@ Page({
 
   refresh() {
     const profile = loadProfile();
-    const history = loadHistory().map((item) => ({ ...item, dateLabel: formatDate(item.createdAt) }));
+    const history = loadHistory().map((item) => ({ id: item.id, filePath: item.filePath, dateLabel: formatDate(item.createdAt) }));
     const stats = getStats();
     const joinDays = profile ? Math.max(1, Math.floor((Date.now() - profile.createdAt) / DAY) + 1) : 0;
     this.setData({ profile, history, stats, joinDays });

@@ -56,7 +56,7 @@
     <view wx:if="{{history.length > 0}}" class="history-grid">
       <block wx:for="{{history}}" wx:key="id">
         <view class="history-cell" data-src="{{item.filePath}}" bindtap="previewImage">
-          <image class="history-img" src="{{item.filePath}}" mode="aspectFill"></image>
+          <image class="history-img" src="{{item.filePath}}" mode="aspectFill" lazy-load></image>
           <text class="history-date">{{item.dateLabel}}</text>
         </view>
       </block>

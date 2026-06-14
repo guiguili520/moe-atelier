@@ -80,15 +80,25 @@ const saveRemoteUrl = (src, createdAt) => new Promise((resolve, reject) => {
   });
 });
 
+const isExpired = (entry, now) =>
+  !entry || typeof entry.createdAt !== 'number' || (now - entry.createdAt) > HISTORY_TTL_MS;
+
+// 轻量加载：仅按时间过滤，不做任何文件系统检查（页面渲染/onShow 热路径，避免同步 fs 卡顿）。
+const loadHistory = () => {
+  const now = Date.now();
+  const list = readIndex();
+  const kept = list.filter((entry) => !isExpired(entry, now));
+  if (kept.length !== list.length) writeIndex(kept);
+  return kept;
+};
+
+// 深度清理：时间 + 文件存在性 + 删文件 + 上限。开销大（同步 fs），仅 app.onLaunch 低频调用。
 const pruneExpired = () => {
   const now = Date.now();
   const list = readIndex();
   const kept = [];
   list.forEach((entry) => {
-    const valid = entry && typeof entry.createdAt === 'number';
-    const expired = !valid || (now - entry.createdAt) > HISTORY_TTL_MS;
-    const missing = !valid || !fileExists(entry.filePath);
-    if (expired || missing) {
+    if (isExpired(entry, now) || !fileExists(entry.filePath)) {
       if (entry) deleteFile(entry.filePath);
     } else {
       kept.push(entry);
@@ -102,10 +112,11 @@ const pruneExpired = () => {
   return kept;
 };
 
-const loadHistory = () => pruneExpired();
-
-// 轻量计数：只读索引、不触发清理（调用方应已在本次 onShow 调过 loadHistory/pruneExpired）。
-const countHistory = () => readIndex().length;
+// 轻量计数：只按时间过滤，不碰文件系统。
+const countHistory = () => {
+  const now = Date.now();
+  return readIndex().filter((entry) => !isExpired(entry, now)).length;
+};
 
 const addHistoryImage = async ({ src, title, prompt, promptId, apiFormat }) => {
   const createdAt = Date.now();
