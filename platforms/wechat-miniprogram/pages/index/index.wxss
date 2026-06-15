@@ -793,9 +793,9 @@ button::after {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 176rpx;
-  height: 176rpx;
-  margin-bottom: 26rpx;
+  width: 140rpx;
+  height: 140rpx;
+  margin-bottom: 24rpx;
   border-radius: 50%;
   box-shadow: 0 8rpx 24rpx rgba(255, 112, 144, 0.28);
   animation: genBreathe 1.6s ease-in-out infinite;
@@ -803,26 +803,27 @@ button::after {
 
 .gen-ring-hole {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   justify-content: center;
-  width: 132rpx;
-  height: 132rpx;
+  width: 104rpx;
+  height: 104rpx;
   border-radius: 50%;
   background: rgba(255, 249, 250, 0.98);
 }
 
 .gen-ring-num {
   color: #ff7a90;
-  font-size: 52rpx;
+  font-size: 38rpx;
   font-weight: 900;
   line-height: 1;
 }
 
 .gen-ring-pct {
-  margin-left: 3rpx;
+  margin-left: 2rpx;
   color: #ff9eb5;
-  font-size: 24rpx;
+  font-size: 20rpx;
   font-weight: 900;
+  line-height: 1;
 }
 
 @keyframes genBreathe {
