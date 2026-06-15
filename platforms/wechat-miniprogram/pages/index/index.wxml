@@ -195,8 +195,13 @@
 
   <view wx:if="{{genVisible}}" class="gen-mask" catchtap="noop" catchtouchmove="noop">
     <view class="gen-card">
-      <view class="gen-orb"></view>
-      <view class="gen-tip">{{genTip}}...{{genPercent}}%</view>
+      <view class="gen-ring" style="background: conic-gradient(#ff9eb5 {{genPercent}}%, #ffe5ec {{genPercent}}%);">
+        <view class="gen-ring-hole">
+          <text class="gen-ring-num">{{genPercent}}</text>
+          <text class="gen-ring-pct">%</text>
+        </view>
+      </view>
+      <view class="gen-tip">{{genTip}}</view>
     </view>
   </view>
 </view>
