@@ -1,0 +1,19 @@
+platforms/wechat-miniprogram/pages/index/index.wxss
+  s_5a1db90f202aef::t_3e0c5522be3f5e 796-798,806,808-809,816,822,824,826
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.6",
+  "base_commit_sha": "338e2388afe8b2e3b68318a2ff51706241fd6629",
+  "prompts": {},
+  "sessions": {
+    "s_5a1db90f202aef": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bb61149b-e778-4c84-8db3-d37a7194d81b",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "xiaofei <1980028437@qq.com>"
+    }
+  }
+}
