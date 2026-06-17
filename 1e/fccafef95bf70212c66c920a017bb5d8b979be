@@ -1,0 +1,41 @@
+platforms/wechat-miniprogram/pages/profile/profile.js
+  s_5a1db90f202aef::t_f4f0c502fd8437 104-111
+platforms/wechat-miniprogram/pages/config/config.js
+  s_5a1db90f202aef::t_2035440f3cba11 76-79,91-94
+  s_5a1db90f202aef::t_5a570eb9ec8216 115-126
+  s_5a1db90f202aef::t_46c5859999efdb 42-44,47-50
+  s_5a1db90f202aef::t_6f1409ac44067e 4-6,9-11
+platforms/wechat-miniprogram/pages/index/index.wxml
+  s_5a1db90f202aef::t_1b39634b8c0395 68
+platforms/wechat-miniprogram/utils/prompts.js
+  s_5a1db90f202aef::t_c97b488b8966d6 103-104
+platforms/wechat-miniprogram/pages/config/config.wxml
+  s_5a1db90f202aef::t_7f9e47f18bb2c7 43,49-68
+platforms/wechat-miniprogram/pages/index/index.js
+  s_5a1db90f202aef::t_c46f974b3bf7e2 218-230,232-233
+  s_5a1db90f202aef::t_1157fe40dfa799 241,243-249
+  s_5a1db90f202aef::t_aa1d79f73e6be7 477-481
+server/miniProxy.mjs
+  s_5a1db90f202aef::t_170fd9ec7cebce 51,59-64
+  s_5a1db90f202aef::t_3c7f2e5cc4d8ff 143-145
+  s_5a1db90f202aef::t_fdece0ff1e52d5 113,116,123-126
+platforms/wechat-miniprogram/utils/settings.js
+  s_5a1db90f202aef::t_03e53065c06375 12-34,43-45
+  s_5a1db90f202aef::t_2d16a472f931df 72-77,82-84,88-90
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.8",
+  "base_commit_sha": "1efccafef95bf70212c66c920a017bb5d8b979be",
+  "prompts": {},
+  "sessions": {
+    "s_5a1db90f202aef": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bb61149b-e778-4c84-8db3-d37a7194d81b",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "xiaofei <1980028437@qq.com>"
+    }
+  }
+}
