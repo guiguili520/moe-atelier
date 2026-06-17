@@ -10,7 +10,6 @@ const SIZE_OPTIONS = [
   { label: '方图', value: '1024x1024', desc: '头像 / 正方形作品' },
   { label: '竖图', value: '1024x1536', desc: '海报 / 手机壁纸' },
   { label: '横图', value: '1536x1024', desc: '封面 / 场景插画' },
-  { label: '高清方图', value: '2048x2048', desc: '需模型支持 2K' },
   { label: '自动', value: 'auto', desc: '由模型自动决定' }
 ];
 
