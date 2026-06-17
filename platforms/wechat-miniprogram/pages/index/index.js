@@ -215,22 +215,22 @@ Page({
   },
 
   buildCategories(prompts) {
-    const favoriteIds = this.data.favoriteIds;
-    const base = [
-      { id: 'all', label: '全部', count: prompts.length, active: this.data.activeCategory === 'all' },
-      { id: 'new', label: '最新', count: prompts.filter((item) => item.isNew).length, active: this.data.activeCategory === 'new' },
-      { id: 'favorites', label: '收藏', count: prompts.filter((item) => favoriteIds.includes(item.id)).length, active: this.data.activeCategory === 'favorites' }
+    // 数据源真实可分维度只有 type（图生图/文生图）与 heat_score（热门排序）；
+    // category 全是 gallery、tags 99% 是噪声，故用固定 chip 而非按 section 派生。
+    const active = this.data.activeCategory;
+    const favoriteSet = new Set(this.data.favoriteIds);
+    const img2img = prompts.filter((item) => item.promptType === 'img2img').length;
+    const txt2img = prompts.filter((item) => item.promptType === 'txt2img').length;
+    const favCount = prompts.filter((item) => favoriteSet.has(item.id)).length;
+    const list = [
+      { id: 'all', label: '全部', count: prompts.length, active: active === 'all' },
+      { id: 'hot', label: '热门', count: 0, active: active === 'hot' }, // 热门是排序非筛选，不显计数
+      { id: 'img2img', label: '图生图', count: img2img, active: active === 'img2img' },
+      { id: 'txt2img', label: '文生图', count: txt2img, active: active === 'txt2img' },
+      { id: 'favorites', label: '收藏', count: favCount, active: active === 'favorites' }
     ];
-    const sectionMap = new Map();
-    prompts.forEach((prompt) => {
-      const current = sectionMap.get(prompt.sectionId) || { id: prompt.sectionId, label: prompt.sectionTitle, count: 0 };
-      current.count += 1;
-      sectionMap.set(prompt.sectionId, current);
-    });
-    const sections = Array.from(sectionMap.values())
-      .filter((item) => item.id !== 'prompt-manager')
-      .map((item) => ({ ...item, active: this.data.activeCategory === item.id }));
-    return [...base, ...sections].filter((item) => item.count > 0 || ['all', 'favorites'].includes(item.id));
+    // 全部/热门/收藏 始终显示；图生图/文生图 仅在该类型有内容时显示。
+    return list.filter((item) => item.count > 0 || ['all', 'hot', 'favorites'].includes(item.id));
   },
 
   applyFilters() {
@@ -238,12 +238,15 @@ Page({
     const { activeCategory, searchText, favoriteIds, page } = this.data;
     const keyword = searchText.trim().toLowerCase();
     let filtered = allPrompts;
-    if (activeCategory === 'new') {
-      filtered = filtered.filter((item) => item.isNew);
-    } else if (activeCategory === 'favorites') {
+    if (activeCategory === 'favorites') {
       filtered = filtered.filter((item) => favoriteIds.includes(item.id));
-    } else if (activeCategory !== 'all') {
-      filtered = filtered.filter((item) => item.sectionId === activeCategory);
+    } else if (activeCategory === 'img2img') {
+      filtered = filtered.filter((item) => item.promptType === 'img2img');
+    } else if (activeCategory === 'txt2img') {
+      filtered = filtered.filter((item) => item.promptType === 'txt2img');
+    } else if (activeCategory === 'hot') {
+      // 热门：全部内容按 heat_score 倒序（slice 避免改动原数组）
+      filtered = filtered.slice().sort((a, b) => (b.heatScore || 0) - (a.heatScore || 0));
     }
     if (keyword) {
       filtered = filtered.filter((item) => [
@@ -471,7 +474,11 @@ Page({
       apiFormat: config.apiFormat,
       model: config.model,
       prompt: promptText,
-      size: config.size
+      size: config.size,
+      // 以下三项 OpenAI 专属，代理端按格式决定是否透传（Gemini 忽略）。
+      quality: config.quality,
+      outputFormat: config.outputFormat,
+      background: config.background
     };
     if (referenceImage) payload.image = referenceImage;
     this.setData({ generatingId: id, isGenerating: true });

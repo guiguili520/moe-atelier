@@ -101,7 +101,14 @@ Page({
   previewImage(event) {
     const src = event.currentTarget.dataset.src;
     if (!src) return;
-    const urls = this.data.history.map((item) => item.filePath).filter(Boolean);
+    const seen = {};
+    const all = this.data.history
+      .map((item) => item.filePath)
+      .filter((p) => p && !seen[p] && (seen[p] = true));
+    const idx = all.indexOf(src);
+    // previewImage 设了 current 后，部分基础库会从第 0 张「滚动/回弹」到 current，
+    // 中间几张被快速闪过（点第 3 张尤其明显）。把点击项旋转到首位，让它直接在 index 0 打开，消除闪烁。
+    const urls = idx > 0 ? all.slice(idx).concat(all.slice(0, idx)) : all;
     wx.previewImage({ current: src, urls: urls.length ? urls : [src] });
   }
 });

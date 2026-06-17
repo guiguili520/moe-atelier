@@ -100,6 +100,8 @@ const buildPromptItem = (raw, section, index) => {
     notes: raw.notes || raw.description || '',
     contributor: raw.contributor || raw.author || '匿名',
     tags,
+    promptType: normalizeText(raw.type),
+    heatScore: Number(raw.heat_score) || 0,
     sectionId: section.id,
     sectionTitle: normalizeSectionTitle(section.title),
     images,

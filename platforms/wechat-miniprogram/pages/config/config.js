@@ -1,8 +1,14 @@
 const {
   FORMAT_OPTIONS,
   SIZE_OPTIONS,
+  QUALITY_OPTIONS,
+  OUTPUT_FORMAT_OPTIONS,
+  BACKGROUND_OPTIONS,
   getFormatIndex,
   getSizeIndex,
+  getQualityIndex,
+  getOutputFormatIndex,
+  getBackgroundIndex,
   loadConfig,
   saveConfig,
   PROXY_BASE
@@ -33,8 +39,15 @@ Page({
     config: loadConfig(),
     formatOptions: FORMAT_OPTIONS,
     sizeOptions: SIZE_OPTIONS,
+    qualityOptions: QUALITY_OPTIONS,
+    outputFormatOptions: OUTPUT_FORMAT_OPTIONS,
+    backgroundOptions: BACKGROUND_OPTIONS,
     formatIndex: 0,
     sizeIndex: 0,
+    qualityIndex: 0,
+    outputFormatIndex: 0,
+    backgroundIndex: 0,
+    isOpenAI: true,
     models: [],
     allModels: [],
     loadingModels: false,
@@ -60,6 +73,10 @@ Page({
       config,
       formatIndex: getFormatIndex(config.apiFormat),
       sizeIndex: getSizeIndex(config.size),
+      qualityIndex: getQualityIndex(config.quality),
+      outputFormatIndex: getOutputFormatIndex(config.outputFormat),
+      backgroundIndex: getBackgroundIndex(config.background),
+      isOpenAI: config.apiFormat !== 'gemini',
       dirty: false
     });
   },
@@ -71,6 +88,10 @@ Page({
       config,
       formatIndex: getFormatIndex(config.apiFormat),
       sizeIndex: getSizeIndex(config.size),
+      qualityIndex: getQualityIndex(config.quality),
+      outputFormatIndex: getOutputFormatIndex(config.outputFormat),
+      backgroundIndex: getBackgroundIndex(config.background),
+      isOpenAI: config.apiFormat !== 'gemini',
       dirty: true
     });
   },
@@ -89,6 +110,18 @@ Page({
   handleSizeChange(event) {
     const sizeIndex = Number(event.detail.value);
     this.patch({ size: SIZE_OPTIONS[sizeIndex].value });
+  },
+
+  handleQualityChange(event) {
+    this.patch({ quality: QUALITY_OPTIONS[Number(event.detail.value)].value });
+  },
+
+  handleOutputFormatChange(event) {
+    this.patch({ outputFormat: OUTPUT_FORMAT_OPTIONS[Number(event.detail.value)].value });
+  },
+
+  handleBackgroundChange(event) {
+    this.patch({ background: BACKGROUND_OPTIONS[Number(event.detail.value)].value });
   },
 
   handleApiUrlInput(event) {

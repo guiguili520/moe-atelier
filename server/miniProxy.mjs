@@ -48,6 +48,7 @@ const resolveGenerateUrl = (config) => {
 
 const buildRequest = (config, prompt, image) => {
   if (config.apiFormat === 'gemini') {
+    // Gemini 不使用 quality/output_format/background，忽略之。
     const parts = [{ text: prompt }]
     if (image) parts.push({ inlineData: { mimeType: image.mime, data: image.base64 } })
     return {
@@ -55,7 +56,12 @@ const buildRequest = (config, prompt, image) => {
       generationConfig: { responseModalities: ['TEXT', 'IMAGE'] },
     }
   }
-  return { model: config.model, prompt, n: 1, size: config.size }
+  // OpenAI gpt-image-1：按非空透传 quality / output_format / background。
+  const req = { model: config.model, prompt, n: 1, size: config.size }
+  if (config.quality) req.quality = config.quality
+  if (config.outputFormat) req.output_format = config.outputFormat
+  if (config.background) req.background = config.background
+  return req
 }
 
 const extractImages = (body, apiFormat) => {
@@ -104,15 +110,20 @@ const parseJsonSafe = (text) => {
   }
 }
 
-export const proxyGenerate = async ({ apiUrl, apiKey, apiFormat, model, prompt, size, image }) => {
+export const proxyGenerate = async ({ apiUrl, apiKey, apiFormat, model, prompt, size, image, quality, outputFormat, background }) => {
   if (!apiUrl || !apiKey || !model) throw new Error('缺少 apiUrl/apiKey/model')
   if (!prompt) throw new Error('缺少提示词')
+  const isOpenAI = (apiFormat || 'openai') !== 'gemini'
   const config = {
     apiUrl,
     apiKey,
     apiFormat: apiFormat || 'openai',
     model,
     size: size || '1024x1024',
+    // OpenAI 专属，Gemini 一律置空忽略。
+    quality: isOpenAI ? (quality || '') : '',
+    outputFormat: isOpenAI ? (outputFormat || '') : '',
+    background: isOpenAI ? (background || '') : '',
   }
   const img = image ? parseImageDataUrl(image) : null
   if (image && !img) throw new Error('参考图格式不正确')
@@ -129,6 +140,9 @@ export const proxyGenerate = async ({ apiUrl, apiKey, apiFormat, model, prompt, 
     fd.append('prompt', prompt)
     fd.append('size', config.size)
     fd.append('n', '1')
+    if (config.quality) fd.append('quality', config.quality)
+    if (config.outputFormat) fd.append('output_format', config.outputFormat)
+    if (config.background) fd.append('background', config.background)
     fd.append('image', new Blob([Buffer.from(img.base64, 'base64')], { type: img.mime }), `image.${extFromMime(img.mime)}`)
     resp = await fetch(editsUrl, {
       method: 'POST',

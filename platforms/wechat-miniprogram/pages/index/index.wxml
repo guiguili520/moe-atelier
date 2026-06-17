@@ -65,7 +65,7 @@
       <block wx:for="{{categories}}" wx:key="id">
         <view class="category-chip {{item.active ? 'active' : ''}}" data-id="{{item.id}}" bindtap="handleCategoryTap">
           <text>{{item.label}}</text>
-          <text class="category-count">{{item.count}}</text>
+          <text wx:if="{{item.count}}" class="category-count">{{item.count}}</text>
         </view>
       </block>
     </view>

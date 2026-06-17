@@ -9,7 +9,29 @@ const FORMAT_OPTIONS = [
 const SIZE_OPTIONS = [
   { label: '方图', value: '1024x1024', desc: '头像 / 正方形作品' },
   { label: '竖图', value: '1024x1536', desc: '海报 / 手机壁纸' },
-  { label: '横图', value: '1536x1024', desc: '封面 / 场景插画' }
+  { label: '横图', value: '1536x1024', desc: '封面 / 场景插画' },
+  { label: '高清方图', value: '2048x2048', desc: '需模型支持 2K' },
+  { label: '自动', value: 'auto', desc: '由模型自动决定' }
+];
+
+// 以下三项为 OpenAI gpt-image-1 专属参数，Gemini 不使用（配置页仅 OpenAI 格式显示）。
+const QUALITY_OPTIONS = [
+  { label: '高', value: 'high', desc: '细节最佳 / 更慢' },
+  { label: '中', value: 'medium', desc: '均衡' },
+  { label: '低', value: 'low', desc: '更快更省' },
+  { label: '自动', value: 'auto', desc: '由模型决定' }
+];
+
+const OUTPUT_FORMAT_OPTIONS = [
+  { label: 'PNG', value: 'png', desc: '无损 / 支持透明' },
+  { label: 'JPEG', value: 'jpeg', desc: '体积小 / 不透明' },
+  { label: 'WEBP', value: 'webp', desc: '小体积 / 支持透明' }
+];
+
+const BACKGROUND_OPTIONS = [
+  { label: '自动', value: 'auto', desc: '由模型决定' },
+  { label: '透明', value: 'transparent', desc: '需 PNG / WEBP' },
+  { label: '不透明', value: 'opaque', desc: '实心背景' }
 ];
 
 const DEFAULT_CONFIG = {
@@ -18,6 +40,9 @@ const DEFAULT_CONFIG = {
   apiKey: '',
   model: 'gpt-image-1',
   size: '1024x1024',
+  quality: 'high',
+  outputFormat: 'png',
+  background: 'auto',
   promptSourceUrl: 'https://moe.guiguili.cloud/api/prompt-manager'
 };
 
@@ -44,13 +69,25 @@ const getFormatIndex = (apiFormat) => Math.max(0, FORMAT_OPTIONS.findIndex((item
 
 const getSizeIndex = (size) => Math.max(0, SIZE_OPTIONS.findIndex((item) => item.value === size));
 
+const getQualityIndex = (quality) => Math.max(0, QUALITY_OPTIONS.findIndex((item) => item.value === quality));
+
+const getOutputFormatIndex = (format) => Math.max(0, OUTPUT_FORMAT_OPTIONS.findIndex((item) => item.value === format));
+
+const getBackgroundIndex = (background) => Math.max(0, BACKGROUND_OPTIONS.findIndex((item) => item.value === background));
+
 module.exports = {
   DEFAULT_CONFIG,
   FORMAT_OPTIONS,
   SIZE_OPTIONS,
+  QUALITY_OPTIONS,
+  OUTPUT_FORMAT_OPTIONS,
+  BACKGROUND_OPTIONS,
   PROXY_BASE,
   getFormatIndex,
   getSizeIndex,
+  getQualityIndex,
+  getOutputFormatIndex,
+  getBackgroundIndex,
   loadConfig,
   saveConfig
 };

@@ -1,5 +1,5 @@
 <!--
-此文件为开发者工具生成，生成时间: 2026/6/14 14:33:05
+此文件为开发者工具生成，生成时间: 2026/6/15 09:24:09
 使用方法：
 在 /Users/mac/Documents/code/个人项目/moe-atelier/platforms/wechat-miniprogram/pages/index/index.wxml 引入模板
 
@@ -22,8 +22,8 @@
         <view class="brand">
           <image class="brand-mark sk-image" mode="aspectFill"></image>
           <view>
-            <view class="brand-title sk-transparent sk-text-8-3333-400 sk-text">次元绘图</view>
-            <view class="brand-subtitle sk-transparent sk-text-14-2857-35 sk-text">提示词广场</view>
+            <view class="brand-title sk-transparent sk-text-8-3333-358 sk-text">次元绘图</view>
+            <view class="brand-subtitle sk-transparent sk-text-14-2857-870 sk-text">提示词广场</view>
           </view>
         </view>
         <view class="top-actions">
@@ -44,49 +44,65 @@
       <view class="custom-panel">
         <view class="custom-head">
           <view>
-            <view class="panel-kicker sk-transparent sk-text-14-2857-827 sk-text">自由创作</view>
-            <view class="panel-title sk-transparent sk-text-14-2857-868 sk-text">自定义生图</view>
+            <view class="panel-kicker sk-transparent sk-text-14-2857-539 sk-text">自由创作</view>
+            <view class="panel-title sk-transparent sk-text-14-2857-756 sk-text">自定义生图</view>
           </view>
-          <view class="custom-generate-btn sk-transparent sk-text-30-6452-396 sk-text" style="background-position-x: 50%;">
+          <view class="custom-generate-btn sk-transparent sk-text-30-6452-739 sk-text" style="background-position-x: 50%;">
             生成
           </view>
         </view>
         <view class="custom-textarea sk-image" maxlength="-1" placeholder="输入你想生成的画面提示词..." value="true"></view>
+        <view class="ref-row">
+          <view class="ref-add sk-transparent sk-text-14-2857-183 sk-text" data-target="customReference">+ 添加参考图（图生图，可选）</view>
+        </view>
       </view>
       <scroll-view enhanced="true" scroll-x="true" class="category-scroll">
         <view class="category-list" style="scroll-snap-align: none;">
           <view class="category-chip active" data-id="all">
-            <text class="sk-transparent sk-text-14-2857-948 sk-text">全部</text>
-            <text class="category-count sk-transparent sk-text-20-5882-447 sk-text" style="background-position-x: 50%;">379</text>
+            <text class="sk-transparent sk-text-14-2857-562 sk-text">全部</text>
+            <text class="category-count sk-transparent sk-text-20-5882-561 sk-text" style="background-position-x: 50%;">374</text>
           </view>
           <view class="category-chip" data-id="favorites">
-            <text class="sk-transparent sk-text-14-2857-242 sk-text">收藏</text>
-            <text class="category-count sk-transparent sk-text-20-5882-608 sk-text" style="background-position-x: 50%;">0</text>
+            <text class="sk-transparent sk-text-14-2857-699 sk-text">收藏</text>
+            <text class="category-count sk-transparent sk-text-20-5882-961 sk-text" style="background-position-x: 50%;">0</text>
           </view>
         </view>
       </scroll-view>
+      <view class="recent-panel">
+        <view class="panel-head">
+          <view>
+            <view class="panel-kicker sk-transparent sk-text-14-2857-1000 sk-text">最近生成</view>
+            <view class="panel-title sk-transparent sk-text-14-2857-771 sk-text">你的作品</view>
+          </view>
+        </view>
+        <scroll-view enhanced="true" scroll-x="true" class="recent-scroll">
+          <view class="recent-list" style="scroll-snap-align: none;">
+            <image lazy-load="true" class="recent-image sk-image" data-src="http://usr/history-1781445887725-577426.png" mode="aspectFill"></image>
+          </view>
+        </scroll-view>
+      </view>
       <view class="prompt-grid">
         <view class="prompt-card" data-id="841">
           <view class="image-wrap">
             <image lazy-load="true" class="prompt-image sk-image" mode="aspectFill"></image>
             <view class="image-badges">
-              <text class="date-badge sk-transparent sk-text-16-6667-107 sk-text">2026-04-29</text>
+              <text class="date-badge sk-transparent sk-text-16-6667-955 sk-text">2026-04-29</text>
             </view>
-            <text class="section-badge sk-transparent sk-text-16-6667-306 sk-text">精选</text>
+            <text class="section-badge sk-transparent sk-text-16-6667-829 sk-text">精选</text>
             <view class="favorite-btn" data-id="841"></view>
           </view>
           <view class="card-body">
-            <view class="card-title sk-transparent sk-text-15-0000-462 sk-text">MUV-LUV名场面替换</view>
+            <view class="card-title sk-transparent sk-text-15-0000-945 sk-text">MUV-LUV名场面替换</view>
             <view class="tag-row">
-              <text class="tag sk-transparent sk-text-14-2857-272 sk-text">#MUV-LUV</text>
+              <text class="tag sk-transparent sk-text-14-2857-146 sk-text">#MUV-LUV</text>
             </view>
-            <view class="prompt-summary sk-transparent sk-text-17-6471-899 sk-text">将图一风格改为《MUV-LUV Alternative Total Eclipse》二次元画风。将图一左侧人物完全替换为图二人物（不戴帽子），保留图一背景、...</view>
+            <view class="prompt-summary sk-transparent sk-text-17-6471-91 sk-text">将图一风格改为《MUV-LUV Alternative Total Eclipse》二次元画风。将图一左侧人物完全替换为图二人物（不戴帽子），保留图一背景、...</view>
             <view class="card-footer">
               <view class="author">
-                <view class="avatar sk-transparent sk-text-23-5294-440 sk-text" style="background-position-x: 50%;">人</view>
-                <text class="sk-transparent sk-text-14-2857-790 sk-text">匿名</text>
+                <view class="avatar sk-transparent sk-text-23-5294-170 sk-text" style="background-position-x: 50%;">人</view>
+                <text class="sk-transparent sk-text-14-2857-205 sk-text">匿名</text>
               </view>
-              <view class="use-btn sk-transparent sk-text-29-6296-989 sk-text" data-id="841" style="background-position-x: 50%;">
+              <view class="use-btn sk-transparent sk-text-29-6296-684 sk-text" data-id="841" style="background-position-x: 50%;">
                 使用
               </view>
             </view>
@@ -96,21 +112,21 @@
           <view class="image-wrap">
             <image lazy-load="true" class="prompt-image sk-image" mode="aspectFill"></image>
             <view class="image-badges">
-              <text class="date-badge sk-transparent sk-text-16-6667-412 sk-text">2026-04-25</text>
+              <text class="date-badge sk-transparent sk-text-16-6667-944 sk-text">2026-04-25</text>
             </view>
-            <text class="section-badge sk-transparent sk-text-16-6667-487 sk-text">精选</text>
+            <text class="section-badge sk-transparent sk-text-16-6667-418 sk-text">精选</text>
             <view class="favorite-btn" data-id="839"></view>
           </view>
           <view class="card-body">
-            <view class="card-title sk-transparent sk-text-15-0000-40 sk-text">艺术画融合</view>
+            <view class="card-title sk-transparent sk-text-15-0000-730 sk-text">艺术画融合</view>
             <view class="tag-row"></view>
-            <view class="prompt-summary sk-transparent sk-text-17-6471-156 sk-text">请根据我提供的参考图像和提示词模版，生成一段“可直接用于AI绘图”的最终成品提示词。 已知： - 图1为角色参考图 - 图2为艺术原画参考图。 任务目标：以...</view>
+            <view class="prompt-summary sk-transparent sk-text-17-6471-761 sk-text">请根据我提供的参考图像和提示词模版，生成一段“可直接用于AI绘图”的最终成品提示词。 已知： - 图1为角色参考图 - 图2为艺术原画参考图。 任务目标：以...</view>
             <view class="card-footer">
               <view class="author">
-                <view class="avatar sk-transparent sk-text-23-5294-659 sk-text" style="background-position-x: 50%;">人</view>
-                <text class="sk-transparent sk-text-14-2857-493 sk-text">逐辰十七</text>
+                <view class="avatar sk-transparent sk-text-23-5294-220 sk-text" style="background-position-x: 50%;">人</view>
+                <text class="sk-transparent sk-text-14-2857-591 sk-text">逐辰十七</text>
               </view>
-              <view class="use-btn sk-transparent sk-text-29-6296-303 sk-text" data-id="839" style="background-position-x: 50%;">
+              <view class="use-btn sk-transparent sk-text-29-6296-193 sk-text" data-id="839" style="background-position-x: 50%;">
                 使用
               </view>
             </view>
@@ -120,7 +136,25 @@
           <view class="image-wrap">
             <image lazy-load="true" class="prompt-image sk-image" mode="aspectFill"></image>
             <view class="image-badges">
-              <text class="date-badge sk-transparent sk-text-16-6667-184 sk-text">2026-04-21</text>
+              <text class="date-badge sk-transparent sk-text-16-6667-567 sk-text">2026-04-21</text>
+            </view>
+            <text class="section-badge sk-transparent sk-text-16-6667-597 sk-text">精选</text>
+            <view class="favorite-btn" data-id="838"></view>
+          </view>
+          <view class="card-body">
+            <view class="card-title sk-transparent sk-text-15-0000-584 sk-text">抱膝面部特写</view>
+            <view class="tag-row">
+              <text class="tag sk-transparent sk-text-14-2857-760 sk-text">#gpt image 2</text>
+            </view>
+            <view class="prompt-summary sk-transparent sk-text-17-6471-883 sk-text">生成一张参考图人物超近距离面部特写海报，动作是抱膝坐着（脸贴近腿），动画截图风格。 3:2比例，4k分辨率。</view>
+            <view class="card-footer">
+              <view class="author">
+                <view class="avatar sk-transparent sk-text-23-5294-12 sk-text" style="background-position-x: 50%;">人</view>
+                <text class="sk-transparent sk-text-14-2857-412 sk-text">大江户战士</text>
+              </view>
+              <view class="use-btn sk-transparent sk-text-29-6296-915 sk-text" data-id="838" style="background-position-x: 50%;">
+                使用
+              </view>
             </view>
           </view>
         </view>
@@ -128,7 +162,41 @@
           <view class="image-wrap">
             <image lazy-load="true" class="prompt-image sk-image" mode="aspectFill"></image>
             <view class="image-badges">
-              <text class="date-badge sk-transparent sk-text-16-6667-809 sk-text">2026-04-21</text>
+              <text class="date-badge sk-transparent sk-text-16-6667-933 sk-text">2026-04-21</text>
+            </view>
+            <text class="section-badge sk-transparent sk-text-16-6667-811 sk-text">精选</text>
+            <view class="favorite-btn" data-id="837"></view>
+          </view>
+          <view class="card-body">
+            <view class="card-title sk-transparent sk-text-15-0000-927 sk-text">葬送的芙莉莲原画展</view>
+            <view class="tag-row">
+              <text class="tag sk-transparent sk-text-14-2857-753 sk-text">#gpt image 2</text>
+            </view>
+            <view class="prompt-summary sk-transparent sk-text-17-6471-887 sk-text">Frieren: Beyond Journey's End exhibition poster style, Frieren in the foregrou...</view>
+            <view class="card-footer">
+              <view class="author">
+                <view class="avatar sk-transparent sk-text-23-5294-905 sk-text" style="background-position-x: 50%;">人</view>
+                <text class="sk-transparent sk-text-14-2857-693 sk-text">匿名</text>
+              </view>
+              <view class="use-btn sk-transparent sk-text-29-6296-858 sk-text" data-id="837" style="background-position-x: 50%;">
+                使用
+              </view>
+            </view>
+          </view>
+        </view>
+        <view class="prompt-card" data-id="832">
+          <view class="image-wrap">
+            <image lazy-load="true" class="prompt-image sk-image" mode="aspectFill"></image>
+            <view class="image-badges">
+              <text class="date-badge sk-transparent sk-text-16-6667-408 sk-text">2026-04-19</text>
+            </view>
+          </view>
+        </view>
+        <view class="prompt-card right" data-id="820">
+          <view class="image-wrap">
+            <image lazy-load="true" class="prompt-image sk-image" mode="aspectFill"></image>
+            <view class="image-badges">
+              <text class="date-badge sk-transparent sk-text-16-6667-964 sk-text">2026-03-09</text>
             </view>
           </view>
         </view>

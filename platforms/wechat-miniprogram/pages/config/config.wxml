@@ -40,12 +40,32 @@
 
   <view class="panel">
     <view class="panel-title">生成参数</view>
-    <view class="field last">
+    <view class="field {{isOpenAI ? '' : 'last'}}">
       <text class="label">画幅</text>
       <picker mode="selector" range="{{sizeOptions}}" range-key="desc" value="{{sizeIndex}}" bindchange="handleSizeChange">
         <view class="picker">{{sizeOptions[sizeIndex].label}} · {{sizeOptions[sizeIndex].desc}}</view>
       </picker>
     </view>
+    <block wx:if="{{isOpenAI}}">
+      <view class="field">
+        <text class="label">质量</text>
+        <picker mode="selector" range="{{qualityOptions}}" range-key="desc" value="{{qualityIndex}}" bindchange="handleQualityChange">
+          <view class="picker">{{qualityOptions[qualityIndex].label}} · {{qualityOptions[qualityIndex].desc}}</view>
+        </picker>
+      </view>
+      <view class="field">
+        <text class="label">输出格式</text>
+        <picker mode="selector" range="{{outputFormatOptions}}" range-key="desc" value="{{outputFormatIndex}}" bindchange="handleOutputFormatChange">
+          <view class="picker">{{outputFormatOptions[outputFormatIndex].label}} · {{outputFormatOptions[outputFormatIndex].desc}}</view>
+        </picker>
+      </view>
+      <view class="field last">
+        <text class="label">背景</text>
+        <picker mode="selector" range="{{backgroundOptions}}" range-key="desc" value="{{backgroundIndex}}" bindchange="handleBackgroundChange">
+          <view class="picker">{{backgroundOptions[backgroundIndex].label}} · {{backgroundOptions[backgroundIndex].desc}}</view>
+        </picker>
+      </view>
+    </block>
   </view>
 
   <button class="save-btn {{dirty ? 'dirty' : ''}}" bindtap="saveAll">{{dirty ? '保存配置（有改动）' : '保存配置'}}</button>
