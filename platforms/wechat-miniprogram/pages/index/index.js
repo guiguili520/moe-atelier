@@ -517,7 +517,9 @@ Page({
             return;
           }
           incrementGenerated(ok.length);
-          this.setData({ resultImages: mapHistoryToResults() });
+          // 自定义生图成功后清空提示词与参考图，避免残留到下一次。
+          const cleared = id === CUSTOM_GENERATE_ID ? { customPrompt: '', customReference: '' } : {};
+          this.setData({ resultImages: mapHistoryToResults(), ...cleared });
           getApp().globalData.resultImages = ok.map((e) => ({ id: e.id, filePath: e.filePath, title: e.title }));
           this.finishGenAndGo();
         }).catch(() => {
